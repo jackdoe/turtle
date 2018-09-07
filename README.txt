@@ -4,8 +4,13 @@
 
 $ vw -d /path/to/dataset/dataset --readable_model readable_model.txt
 
+
 ## java code
 ReadableModel m = new ReadableModel("directory/of/readable_model.txt");
+
+
+// this will load the model creating only float[] array with same size as 2**bits(-b from vw)
+// it uses same algorithm to compute hash buckets as vw and then returns the inner product
 
 m.predict(
           new Doc(
