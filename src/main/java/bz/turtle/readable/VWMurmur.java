@@ -1,6 +1,11 @@
 package bz.turtle.readable;
 
 public class VWMurmur {
+  /*
+    copy paste reimplementation from explore/hash.h in JohnLangford/vowpal_wabbit
+    since i couldnt find published murmur for java that returns the same hash as VW
+    i had to copy it
+   */
   public static int rotl32(int x, int r) {
     return (x << r) | (x >>> (32L - r));
   }
