@@ -78,7 +78,7 @@ public class ReadableModel {
   public void loadReadableModel(File f) throws Exception {
     bits = 0;
     multiClassBits = 0;
-
+    // TODO: more robust parsing
     readLineByLine(
         f,
         (lineNum, x) -> {
@@ -102,6 +102,8 @@ public class ReadableModel {
               if (options.containsKey("--hash_seed")) {
                 seed = Integer.parseInt(options.get("--hash_seed"));
               }
+
+              // TODO: ngrams, skips
             }
           } else {
             String[] v = x.split(":");
@@ -185,6 +187,8 @@ public class ReadableModel {
 
   public float[] predict(Doc input) {
     final float[] out = new float[maxLabels];
+    // TODO: ngrams skips
+    // TODO: -q --cubic hash calculation
     input.namespaces.forEach(
         n -> {
           int namespaceHash = VWMurmur.hash(n.namespace, seed);
