@@ -13,6 +13,7 @@ import java.util.function.BiConsumer;
 
 public class ReadableModel {
   // https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af
+  // https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction
   public static final int intercept = 11650396;
 
   public float[] weights;
@@ -22,10 +23,12 @@ public class ReadableModel {
   public int mask;
   public int multiClassBits;
   public int seed = 0;
+  public boolean hashAll = false;
 
   // -q ab
   // -q ac
   public Map<Character, Set<Character>> quadratic = new HashMap<>();
+  public boolean quadraticAnyToAny = false;
 
   @Override
   public String toString() {
@@ -88,7 +91,7 @@ public class ReadableModel {
             }
             if (x.contains("options")) {
               extractOptions(
-                  x.split(":")[1],
+                  x.split(":", 2)[1],
                   (key, value) -> {
                     if (key.equals("--oaa")) {
                       maxLabels = Integer.parseInt(value);
@@ -104,15 +107,23 @@ public class ReadableModel {
                     if (key.equals("--hash_seed")) {
                       seed = Integer.parseInt(value);
                     }
-
+                    if (key.equals("--hash")) {
+                      if (value.equals("all")) {
+                        hashAll = true;
+                      }
+                    }
                     if (key.equals("--quadratic")) {
-                      quadratic
-                          .computeIfAbsent(value.charAt(0), k -> new HashSet<>())
-                          .add(value.charAt(1));
+                      if (value.equals("::")) {
+                        quadraticAnyToAny = true;
+                      } else {
+                        quadratic
+                            .computeIfAbsent(value.charAt(0), k -> new HashSet<>())
+                            .add(value.charAt(1));
+                      }
                     }
                     // TODO: --cubic
                     // TODO: ngrams, skips
-
+                    // TODO: lda
                   });
             }
           } else {
@@ -122,6 +133,7 @@ public class ReadableModel {
             weights[bucket] = w;
           }
         });
+
     mask = (1 << bits) - 1;
   }
 
@@ -198,6 +210,21 @@ public class ReadableModel {
 
   static final int FNV_prime = 16777619;
 
+  // https://github.com/JohnLangford/vowpal_wabbit/blob/579c34d2d2fd151b419bea54d9921fc7f3f55bbc/vowpalwabbit/parse_primitives.cc#L48
+  public int hashOf(int nsHash, String f) {
+    int featureHash = 0;
+    if (hashAll) {
+      featureHash = VWMurmur.hash(f, nsHash);
+    } else {
+      try {
+        featureHash = Integer.parseInt(f) + nsHash;
+      } catch (NumberFormatException ex) {
+        featureHash = VWMurmur.hash(f, nsHash);
+      }
+    }
+    return featureHash;
+  }
+
   public float[] predict(Doc input) {
     final float[] out = new float[maxLabels];
     // TODO: ngrams skips
@@ -208,7 +235,7 @@ public class ReadableModel {
           n._computed_hash = namespaceHash;
           n.features.forEach(
               f -> {
-                int featureHash = VWMurmur.hash(f.name, namespaceHash);
+                int featureHash = hashOf(namespaceHash, f.name);
                 f._computed_hash = featureHash;
                 for (int klass = 0; klass < maxLabels; klass++) {
                   int bucket = getBucket(featureHash, klass);
@@ -217,46 +244,68 @@ public class ReadableModel {
               });
         });
 
-    if (quadratic.size() > 0) {
-      Map<Character, List<Namespace>> prebuild = new HashMap<>();
-
-      // build char -> list of namespaces map so we can work with multiple interactions -q ab -q ac
-      input.namespaces.forEach(
-          n -> {
-            if (n.namespace.length() == 0) return;
-            prebuild.computeIfAbsent(n.namespace.charAt(0), k -> new ArrayList<>()).add(n);
-          });
+    if (quadratic.size() > 0 || quadraticAnyToAny) {
 
       // foreach namespace nsA
       //    foreach interacting namespaces nsB
       //       foreach nsA.features a
       //         foreach nsB.feature b
       //            bucket = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
-      input.namespaces.forEach(
-          ans -> {
-            Set<Character> interactStartingWith = quadratic.get(ans.namespace.charAt(0));
-            if (interactStartingWith == null) return;
-            interactStartingWith.forEach(
-                inter -> {
-                  List<Namespace> interactions = prebuild.get(inter);
-                  if (interactions == null) return;
-                  interactions.forEach(
-                      bns -> {
-                        ans.features.forEach(
-                            a -> {
-                              bns.features.forEach(
-                                  b -> {
-                                    int fnv = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
-                                    for (int klass = 0; klass < maxLabels; klass++) {
-                                      int bucket = getBucket(fnv, klass);
-                                      // TODO: check how is that computed for numerical features
-                                      out[klass] += a.value * b.value * weights[bucket];
-                                    }
-                                  });
-                            });
-                      });
-                });
-          });
+
+      if (!quadraticAnyToAny) {
+        input.namespaces.forEach(
+            ans -> {
+              input.namespaces.forEach(
+                  bns -> {
+                    if (ans.namespace.equals(bns.namespace)) return;
+                    ans.features.forEach(
+                        a -> {
+                          bns.features.forEach(
+                              b -> {
+                                int fnv = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
+                                for (int klass = 0; klass < maxLabels; klass++) {
+                                  int bucket = getBucket(fnv, klass);
+                                  out[klass] += a.value * b.value * weights[bucket];
+                                }
+                              });
+                        });
+                  });
+            });
+      } else {
+        Map<Character, List<Namespace>> prebuild = new HashMap<>();
+        // build char -> list of namespaces map so we can work with multiple interactions -q ab -q
+        // ac
+        input.namespaces.forEach(
+            n -> {
+              if (n.namespace.length() == 0) return;
+              prebuild.computeIfAbsent(n.namespace.charAt(0), k -> new ArrayList<>()).add(n);
+            });
+        input.namespaces.forEach(
+            ans -> {
+              Set<Character> interactStartingWith = quadratic.get(ans.namespace.charAt(0));
+              if (interactStartingWith == null) return;
+              interactStartingWith.forEach(
+                  inter -> {
+                    List<Namespace> interactions = prebuild.get(inter);
+                    if (interactions == null) return;
+                    interactions.forEach(
+                        bns -> {
+                          ans.features.forEach(
+                              a -> {
+                                bns.features.forEach(
+                                    b -> {
+                                      int fnv = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
+                                      for (int klass = 0; klass < maxLabels; klass++) {
+                                        int bucket = getBucket(fnv, klass);
+                                        // TODO: check how is that computed for numerical features
+                                        out[klass] += a.value * b.value * weights[bucket];
+                                      }
+                                    });
+                              });
+                        });
+                  });
+            });
+      }
     }
 
     if (input.hasIntercept) {
