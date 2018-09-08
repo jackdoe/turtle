@@ -13,6 +13,7 @@ import java.util.function.BiConsumer;
 
 public class ReadableModel {
   // https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af
+  // https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction
   public static final int intercept = 11650396;
 
   public float[] weights;
@@ -22,6 +23,7 @@ public class ReadableModel {
   public int mask;
   public int multiClassBits;
   public int seed = 0;
+  public boolean hashAll = false;
 
   // -q ab
   // -q ac
@@ -105,7 +107,11 @@ public class ReadableModel {
                     if (key.equals("--hash_seed")) {
                       seed = Integer.parseInt(value);
                     }
-
+                    if (key.equals("--hash")) {
+                      if (value.equals("all")) {
+                        hashAll = true;
+                      }
+                    }
                     if (key.equals("--quadratic")) {
                       if (value.equals("::")) {
                         quadraticAnyToAny = true;
@@ -117,10 +123,6 @@ public class ReadableModel {
                     }
                     // TODO: --cubic
                     // TODO: ngrams, skips
-                    // FIXME: at the moment we treat names as --hash all, which is incorrect
-                    // feature names that are numbers can be treated as they are hashed
-                    // already
-                    // https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction
                   });
             }
           } else {
@@ -206,6 +208,21 @@ public class ReadableModel {
 
   static final int FNV_prime = 16777619;
 
+  // https://github.com/JohnLangford/vowpal_wabbit/blob/579c34d2d2fd151b419bea54d9921fc7f3f55bbc/vowpalwabbit/parse_primitives.cc#L48
+  public int hashOf(int nsHash, String f) {
+    int featureHash = 0;
+    if (hashAll) {
+      featureHash = VWMurmur.hash(f, nsHash);
+    } else {
+      try {
+        featureHash = Integer.parseInt(f) + nsHash;
+      } catch (NumberFormatException ex) {
+        featureHash = VWMurmur.hash(f, nsHash);
+      }
+    }
+    return featureHash;
+  }
+
   public float[] predict(Doc input) {
     final float[] out = new float[maxLabels];
     // TODO: ngrams skips
@@ -216,7 +233,7 @@ public class ReadableModel {
           n._computed_hash = namespaceHash;
           n.features.forEach(
               f -> {
-                int featureHash = VWMurmur.hash(f.name, namespaceHash);
+                int featureHash = hashOf(namespaceHash, f.name);
                 f._computed_hash = featureHash;
                 for (int klass = 0; klass < maxLabels; klass++) {
                   int bucket = getBucket(featureHash, klass);
