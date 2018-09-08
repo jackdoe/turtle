@@ -117,7 +117,10 @@ public class ReadableModel {
                     }
                     // TODO: --cubic
                     // TODO: ngrams, skips
-
+                    // FIXME: at the moment we treat names as --hash all, which is incorrect
+                    // feature names that are numbers can be treated as they are hashed
+                    // already
+                    // https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction
                   });
             }
           } else {
