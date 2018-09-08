@@ -8,12 +8,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiConsumer;
 
 public class ReadableModel {
+  // https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af
   public static final int intercept = 11650396;
 
   public float[] weights;
@@ -24,23 +23,23 @@ public class ReadableModel {
   public int multiClassBits;
   public int seed = 0;
 
+  // -q ab
+  // -q ac
+  public Map<Character, Set<Character>> quadratic = new HashMap<>();
+
   @Override
   public String toString() {
     return String.format("bits: %d, weights: %s", bits, Arrays.toString(weights));
   }
 
   // XXX: incomplete
-  public Map<String, String> extractOptions(String o) {
+  public void extractOptions(String o, BiConsumer<String, String> cb) {
     o = o.trim();
     String[] op = o.split("\\s+");
-    Map<String, String> out = new HashMap<>();
     for (int i = 0; i < op.length; i += 2) {
-      out.put(op[i], op[i + 1]);
+      cb.accept(op[i], op[i + 1]);
     }
-    return out;
   }
-
-  Map<String, String> options;
 
   /*
   Version 8.6.1
@@ -85,25 +84,36 @@ public class ReadableModel {
           if (lineNum < 11) {
             if (x.contains("bits:")) {
               bits = Integer.parseInt(x.split(":")[1]);
-              weights = new float[(1 << bits) - 1];
+              weights = new float[(1 << bits)];
             }
             if (x.contains("options")) {
-              options = extractOptions(x.split(":")[1]);
-              if (options.containsKey("--oaa")) {
-                maxLabels = Integer.parseInt(options.get("--oaa"));
+              extractOptions(
+                  x.split(":")[1],
+                  (key, value) -> {
+                    if (key.equals("--oaa")) {
+                      maxLabels = Integer.parseInt(value);
 
-                multiClassBits = 0;
-                int ml = maxLabels;
-                while (ml > 0) {
-                  multiClassBits++;
-                  ml >>= 1;
-                }
-              }
-              if (options.containsKey("--hash_seed")) {
-                seed = Integer.parseInt(options.get("--hash_seed"));
-              }
+                      multiClassBits = 0;
+                      int ml = maxLabels;
+                      while (ml > 0) {
+                        multiClassBits++;
+                        ml >>= 1;
+                      }
+                    }
 
-              // TODO: ngrams, skips
+                    if (key.equals("--hash_seed")) {
+                      seed = Integer.parseInt(value);
+                    }
+
+                    if (key.equals("--quadratic")) {
+                      quadratic
+                          .computeIfAbsent(value.charAt(0), k -> new HashSet<>())
+                          .add(value.charAt(1));
+                    }
+                    // TODO: --cubic
+                    // TODO: ngrams, skips
+
+                  });
             }
           } else {
             String[] v = x.split(":");
@@ -160,6 +170,7 @@ public class ReadableModel {
               feature = s[0];
               weight = Float.parseFloat(s[1]);
             }
+
             doc.namespaces
                 .get(doc.namespaces.size() - 1)
                 .features
@@ -185,23 +196,68 @@ public class ReadableModel {
     return ((featureHash << multiClassBits) | klass) & mask;
   }
 
+  static final int FNV_prime = 16777619;
+
   public float[] predict(Doc input) {
     final float[] out = new float[maxLabels];
     // TODO: ngrams skips
-    // TODO: -q --cubic hash calculation
+    // TODO: --cubic hash calculation
     input.namespaces.forEach(
         n -> {
-          int namespaceHash = VWMurmur.hash(n.namespace, seed);
+          int namespaceHash = n.namespace.length() == 0 ? 0 : VWMurmur.hash(n.namespace, seed);
+          n._computed_hash = namespaceHash;
           n.features.forEach(
               f -> {
                 int featureHash = VWMurmur.hash(f.name, namespaceHash);
-
+                f._computed_hash = featureHash;
                 for (int klass = 0; klass < maxLabels; klass++) {
                   int bucket = getBucket(featureHash, klass);
                   out[klass] += f.value * weights[bucket];
                 }
               });
         });
+
+    if (quadratic.size() > 0) {
+      Map<Character, List<Namespace>> prebuild = new HashMap<>();
+
+      // build char -> list of namespaces map so we can work with multiple interactions -q ab -q ac
+      input.namespaces.forEach(
+          n -> {
+            if (n.namespace.length() == 0) return;
+            prebuild.computeIfAbsent(n.namespace.charAt(0), k -> new ArrayList<>()).add(n);
+          });
+
+      // foreach namespace nsA
+      //    foreach interacting namespaces nsB
+      //       foreach nsA.features a
+      //         foreach nsB.feature b
+      //            bucket = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
+      input.namespaces.forEach(
+          ans -> {
+            Set<Character> interactStartingWith = quadratic.get(ans.namespace.charAt(0));
+            if (interactStartingWith == null) return;
+            interactStartingWith.forEach(
+                inter -> {
+                  List<Namespace> interactions = prebuild.get(inter);
+                  if (interactions == null) return;
+                  interactions.forEach(
+                      bns -> {
+                        ans.features.forEach(
+                            a -> {
+                              bns.features.forEach(
+                                  b -> {
+                                    int fnv = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
+                                    for (int klass = 0; klass < maxLabels; klass++) {
+                                      int bucket = getBucket(fnv, klass);
+                                      // TODO: check how is that computed for numerical features
+                                      out[klass] += a.value * b.value * weights[bucket];
+                                    }
+                                  });
+                            });
+                      });
+                });
+          });
+    }
 
     if (input.hasIntercept) {
       for (int klass = 0; klass < maxLabels; klass++) {
