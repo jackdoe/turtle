@@ -171,6 +171,7 @@ public class ReadableModel {
 
     BufferedReader brTest = new BufferedReader(new FileReader(testFile));
     BufferedReader brPred = new BufferedReader(new FileReader(predFile));
+    int lineNum = 0;
     try {
       String testLine;
       String predLine;
@@ -201,16 +202,46 @@ public class ReadableModel {
                 .add(new Feature(feature, weight));
           }
         }
+        float[] ourPrediction = predict(doc);
 
-        float pred = Float.parseFloat(predLine);
-        for (int i = 0; i < oaa; i++) {
-          if (pred - predict(doc)[i] > 0.01) {
+        // ran with --probabilities for -oaa
+        if (predLine.contains(":")) {
+          String[] perKlass = predLine.split(" ");
+          for (int i = 0; i < perKlass.length; i++) {
+            String[] kv = perKlass[i].split(":");
+            int index = Integer.parseInt(kv[0]) - 1;
+            float pred = Float.parseFloat(kv[1]);
+
+            if (Math.abs(pred - ourPrediction[index]) > 0.01) {
+              throw new IllegalStateException(
+                  String.format(
+                      "line: %d index %d, prediction: %f, ourPrediction: %f \noaa %s,\npred line: %s\ntest line: %s",
+                      lineNum,
+                      index,
+                      pred,
+                      ourPrediction[index],
+                      Arrays.toString(ourPrediction),
+                      predLine,
+                      testLine));
+            }
+          }
+        } else {
+          float pred = Float.parseFloat(predLine);
+
+          if (Math.abs(pred - ourPrediction[0]) > 0.01) {
             throw new IllegalStateException(
                 String.format(
-                    "klass %d: prediction: %f, expected: %f, test line: %s pred line: %s",
-                    i, predict(doc)[i], pred, testLine, predLine));
+                    "line: %d index %d, prediction: %f, ourPrediction: %f \noaa %s,\npred line: %s\ntest line: %s",
+                    lineNum,
+                    0,
+                    pred,
+                    ourPrediction[0],
+                    Arrays.toString(ourPrediction),
+                    predLine,
+                    testLine));
           }
         }
+        lineNum++;
       }
     } finally {
       brPred.close();
@@ -328,6 +359,7 @@ public class ReadableModel {
         out[klass] += weights[bucket];
       }
     }
+    // TODO: clip if requested
     return out;
   }
 }
