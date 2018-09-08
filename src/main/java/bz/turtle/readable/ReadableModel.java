@@ -15,15 +15,19 @@ public class ReadableModel {
   // https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af
   // https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction
   public static final int intercept = 11650396;
+  static final int FNV_prime = 16777619;
 
   public float[] weights;
   public int bits;
 
-  public int maxLabels = 1;
-  public int mask;
-  public int multiClassBits;
+  public int oaa = 1;
+  public int mask = 0;
+  public int multiClassBits = 0;
   public int seed = 0;
   public boolean hashAll = false;
+
+  public float minLabel = 0;
+  public float maxLabel = 0;
 
   // -q ab
   // -q ac
@@ -36,7 +40,7 @@ public class ReadableModel {
   }
 
   // XXX: incomplete
-  public void extractOptions(String o, BiConsumer<String, String> cb) {
+  private void extractOptions(String o, BiConsumer<String, String> cb) {
     o = o.trim();
     String[] op = o.split("\\s+");
     for (int i = 0; i < op.length; i += 2) {
@@ -44,6 +48,9 @@ public class ReadableModel {
     }
   }
 
+  private String getSecondValue(String s) {
+    return s.split(":")[1];
+  }
   /*
   Version 8.6.1
   Id
@@ -86,18 +93,24 @@ public class ReadableModel {
         (lineNum, x) -> {
           if (lineNum < 11) {
             if (x.contains("bits:")) {
-              bits = Integer.parseInt(x.split(":")[1]);
+              bits = Integer.parseInt(getSecondValue(x));
               weights = new float[(1 << bits)];
+            }
+            if (x.contains("Min label")) {
+              minLabel = Float.parseFloat(getSecondValue(x));
+            }
+            if (x.contains("Max label")) {
+              maxLabel = Float.parseFloat(getSecondValue(x));
             }
             if (x.contains("options")) {
               extractOptions(
                   x.split(":", 2)[1],
                   (key, value) -> {
                     if (key.equals("--oaa")) {
-                      maxLabels = Integer.parseInt(value);
+                      oaa = Integer.parseInt(value);
 
                       multiClassBits = 0;
-                      int ml = maxLabels;
+                      int ml = oaa;
                       while (ml > 0) {
                         multiClassBits++;
                         ml >>= 1;
@@ -208,8 +221,6 @@ public class ReadableModel {
     return ((featureHash << multiClassBits) | klass) & mask;
   }
 
-  static final int FNV_prime = 16777619;
-
   // https://github.com/JohnLangford/vowpal_wabbit/blob/579c34d2d2fd151b419bea54d9921fc7f3f55bbc/vowpalwabbit/parse_primitives.cc#L48
   public int hashOf(int nsHash, String f) {
     int featureHash = 0;
@@ -226,7 +237,7 @@ public class ReadableModel {
   }
 
   public float[] predict(Doc input) {
-    final float[] out = new float[maxLabels];
+    final float[] out = new float[oaa];
     // TODO: ngrams skips
     // TODO: --cubic hash calculation
     input.namespaces.forEach(
@@ -237,7 +248,7 @@ public class ReadableModel {
               f -> {
                 int featureHash = hashOf(namespaceHash, f.name);
                 f._computed_hash = featureHash;
-                for (int klass = 0; klass < maxLabels; klass++) {
+                for (int klass = 0; klass < oaa; klass++) {
                   int bucket = getBucket(featureHash, klass);
                   out[klass] += f.value * weights[bucket];
                 }
@@ -263,7 +274,7 @@ public class ReadableModel {
                           bns.features.forEach(
                               b -> {
                                 int fnv = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
-                                for (int klass = 0; klass < maxLabels; klass++) {
+                                for (int klass = 0; klass < oaa; klass++) {
                                   int bucket = getBucket(fnv, klass);
                                   out[klass] += a.value * b.value * weights[bucket];
                                 }
@@ -295,7 +306,7 @@ public class ReadableModel {
                                 bns.features.forEach(
                                     b -> {
                                       int fnv = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
-                                      for (int klass = 0; klass < maxLabels; klass++) {
+                                      for (int klass = 0; klass < oaa; klass++) {
                                         int bucket = getBucket(fnv, klass);
                                         // TODO: check how is that computed for numerical features
                                         out[klass] += a.value * b.value * weights[bucket];
@@ -309,7 +320,7 @@ public class ReadableModel {
     }
 
     if (input.hasIntercept) {
-      for (int klass = 0; klass < maxLabels; klass++) {
+      for (int klass = 0; klass < oaa; klass++) {
         int bucket = getBucket(intercept, klass);
         out[klass] += weights[bucket];
       }
