@@ -94,38 +94,47 @@ public class Fuzz {
 
   @Test
   public void testMany() throws Exception {
-    runVW("--oaa 10", "");
+    if (vwfound) {
+      runVW("--oaa 10", "");
 
-    runVW("", "");
-    runVW("-q ab", "");
-    runVW("-q ab -q cd -q ac -q bc", "");
+      runVW("", "");
+      runVW("-q ab", "");
+      runVW("-q ab -q cd -q ac -q bc", "");
 
-    // XXX: accumulates error with many namespaces
-    //    runVW("-q ::", "");
+      // XXX: accumulates error with many namespaces
+      //    runVW("-q ::", "");
+    }
   }
 
   File tempDir, data, pred, model, modelBin;
 
+  boolean vwfound = false;
+
   @Before
   public void setUp() throws Exception {
-    tempDir = Files.createTempDirectory("foobar").toFile();
-    data = Paths.get(tempDir.toString(), "test.txt").toFile();
-    pred = Paths.get(tempDir.toString(), "predictions.txt").toFile();
-    System.out.println(tempDir);
-    model = Paths.get(tempDir.toString(), "readable_model.txt").toFile();
-    modelBin = Paths.get(tempDir.toString(), "model.bin").toFile();
-    BufferedWriter writer = new BufferedWriter(new FileWriter(data));
-
-    for (int i = 0; i < 100; i++) {
-      for (int klass = 1; klass < 10; klass++) {
-        writer.write(createExample(klass));
-      }
+    if (new File("/usr/local/bin/vw").exists() || new File("/usr/bin/vw").exists()) {
+      vwfound = true;
     }
-    writer.close();
+    if (vwfound) {
+      tempDir = Files.createTempDirectory("foobar").toFile();
+      data = Paths.get(tempDir.toString(), "test.txt").toFile();
+      pred = Paths.get(tempDir.toString(), "predictions.txt").toFile();
+      System.out.println(tempDir);
+      model = Paths.get(tempDir.toString(), "readable_model.txt").toFile();
+      modelBin = Paths.get(tempDir.toString(), "model.bin").toFile();
+      BufferedWriter writer = new BufferedWriter(new FileWriter(data));
+
+      for (int i = 0; i < 100; i++) {
+        for (int klass = 1; klass < 10; klass++) {
+          writer.write(createExample(klass));
+        }
+      }
+      writer.close();
+    }
   }
 
   @After
   public void tearDown() throws Exception {
-    cleanup(tempDir);
+    if (vwfound) cleanup(tempDir);
   }
 }
