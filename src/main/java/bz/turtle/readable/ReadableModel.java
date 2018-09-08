@@ -73,7 +73,6 @@ public class ReadableModel {
   */
   public void loadReadableModel(File f) throws Exception {
     bits = 0;
-    // FIXME ffs final function
     boolean inHeader = true;
     multiClassBits = 0;
     BufferedReader br = new BufferedReader(new FileReader(f));
