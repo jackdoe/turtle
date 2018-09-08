@@ -15,31 +15,26 @@ public class ReadableModel {
   // https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af
   // https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction
 
-  public static final boolean DEBUG = false;
-  public static final int intercept = 11650396;
-  static final int FNV_prime = 16777619;
+  private static final boolean DEBUG = false;
+  private static final int intercept = 11650396;
+  private final int FNV_prime = 16777619;
 
   public float[] weights;
-  public int bits;
+  private int bits;
 
-  public int oaa = 1;
-  public int mask = 0;
-  public int multiClassBits = 0;
-  public int seed = 0;
-  public boolean hashAll = false;
+  private int oaa = 1;
+  private int mask = 0;
+  private int multiClassBits = 0;
+  private int seed = 0;
+  private boolean hashAll = false;
 
-  public float minLabel = 0;
-  public float maxLabel = 0;
+  private float minLabel = 0;
+  private float maxLabel = 0;
 
   // -q ab
   // -q ac
-  public Map<Character, Set<Character>> quadratic = new HashMap<>();
-  public boolean quadraticAnyToAny = false;
-
-  @Override
-  public String toString() {
-    return String.format("bits: %d, weights: %s", bits, Arrays.toString(weights));
-  }
+  private Map<Character, Set<Character>> quadratic = new HashMap<>();
+  private boolean quadraticAnyToAny = false;
 
   // XXX: incomplete
   private void extractOptions(String o, BiConsumer<String, String> cb) {
@@ -264,12 +259,12 @@ public class ReadableModel {
     }
   }
 
-  public int getBucket(int featureHash, int klass) {
+  private int getBucket(int featureHash, int klass) {
     return ((featureHash << multiClassBits) | klass) & mask;
   }
 
   // https://github.com/JohnLangford/vowpal_wabbit/blob/579c34d2d2fd151b419bea54d9921fc7f3f55bbc/vowpalwabbit/parse_primitives.cc#L48
-  public int hashOf(int nsHash, String f) {
+  protected int hashOf(int nsHash, String f) {
     int featureHash = 0;
     if (hashAll) {
       featureHash = VWMurmur.hash(f, nsHash);
