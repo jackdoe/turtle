@@ -7,6 +7,7 @@ import bz.turtle.readable.input.Namespace;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
@@ -19,7 +20,12 @@ public class ReadableModel {
   private static final int intercept = 11650396;
   private final int FNV_prime = 16777619;
 
+  /**
+   * This is the actual model of size 2**bits if you build something with vw -b 18 it will be of
+   * size 262144
+   */
   public float[] weights;
+
   private int bits;
 
   private int oaa = 1;
@@ -48,30 +54,37 @@ public class ReadableModel {
   private String getSecondValue(String s) {
     return s.split(":")[1];
   }
-  /*
-  Version 8.6.1
-  Id
-  Min label:0
-  Max label:3
-  bits:18
-  lda:0
-  1 ngram:2
-  0 skip:
-  options: --hash_seed 0 --link identity
-  Checksum: 3984224786
-  :0
-  116060:0.532933
-  155256:0.192113
-  213375:0.390151
-  218329:0.158008
-  250698:0.192113
-  259670:0.343652
-  */
-  public void loadReadableModel(File f) throws Exception {
+  /**
+   * @param file the vw --readable_model file.txt
+   * @throws IOException if file reading fails
+   *     <p>The contents of the file looks like this
+   *     <pre>
+   *   Version 8.6.1
+   *   Id
+   *   Min label:0
+   *   Max label:3
+   *   bits:18
+   *   lda:0
+   *   1 ngram:2
+   *   0 skip:
+   *   options: --hash_seed 0 --link identity
+   *   Checksum: 3984224786
+   *   :0
+   *   116060:0.532933
+   *   155256:0.192113
+   *   213375:0.390151
+   *   218329:0.158008
+   *   250698:0.192113
+   *   259670:0.343652
+   * </pre>
+   *     <b>155256:0.192113</b> is hash bucket:weight, we use the same hashing algorithm as vw to
+   *     find the features in the model
+   */
+  public void loadReadableModel(File file) throws IOException {
     bits = 0;
     boolean inHeader = true;
     multiClassBits = 0;
-    BufferedReader br = new BufferedReader(new FileReader(f));
+    BufferedReader br = new BufferedReader(new FileReader(file));
     // TODO: more robust parsing
     try {
       String line;
@@ -161,7 +174,11 @@ public class ReadableModel {
     mask = (1 << bits) - 1;
   }
 
-  public ReadableModel(File root) throws Exception {
+  /**
+   * @param root file or directory to read from
+   * @throws IOException if reading fails
+   */
+  public ReadableModel(File root) throws IOException {
     if (root.isDirectory()) {
       File model = Paths.get(root.toString(), "readable_model.txt").toFile();
       File test = Paths.get(root.toString(), "test.txt").toFile();
@@ -176,7 +193,12 @@ public class ReadableModel {
     }
   }
 
-  public void makeSureItWorks(File testFile, File predFile) throws Exception {
+  /**
+   * @param testFile file with one example per line
+   * @param predFile file output from vw -t -i model --predictions -r
+   * @throws IOException if file reading fails
+   */
+  public void makeSureItWorks(File testFile, File predFile) throws IOException {
     /* to make sure we predict the same values as VW */
 
     BufferedReader brTest = new BufferedReader(new FileReader(testFile));
@@ -278,6 +300,10 @@ public class ReadableModel {
     return featureHash;
   }
 
+  /**
+   * @param input Document to evaluate
+   * @return prediction per class
+   */
   public float[] predict(Doc input) {
     if (DEBUG) {
       System.out.println("-----------");
