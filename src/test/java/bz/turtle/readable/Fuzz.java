@@ -1,5 +1,7 @@
 package bz.turtle.readable;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.*;
@@ -57,7 +59,7 @@ public class Fuzz {
     return sb.toString();
   }
 
-  public String runOrExit(String cmd) throws Exception {
+  public void runOrExit(String cmd) throws Exception {
 
     Process p = Runtime.getRuntime().exec(cmd);
 
@@ -80,19 +82,35 @@ public class Fuzz {
     if (p.exitValue() != 0) {
       throw new Exception("expected exit code 0, got " + p.exitValue());
     }
-    return "";
+  }
+
+  public void runVW(String options) throws Exception {
+    runOrExit(
+        String.format("vw -d %s --readable_model %s -f %s %s", data, model, modelBin, options));
+    runOrExit(String.format("vw -d %s -t -i %s -p %s", data, modelBin, pred));
+    ReadableModel m = new ReadableModel(tempDir);
+    m.makeSureItWorks(data, pred);
   }
 
   @Test
-  public void hashOf() throws Exception {
-    File tempDir = Files.createTempDirectory("foobar").toFile();
-    File data = Paths.get(tempDir.toString(), "test.txt").toFile();
-    File pred = Paths.get(tempDir.toString(), "predictions.txt").toFile();
+  public void testMany() throws Exception {
+    runVW("--oaa 10");
+    runVW("");
+    runVW("-q ab");
+    runVW("-q ab -q cd -q ac -q bc");
+    runVW("-q ::");
+  }
 
+  File tempDir, data, pred, model, modelBin;
+
+  @Before
+  public void setUp() throws Exception {
+    tempDir = Files.createTempDirectory("foobar").toFile();
+    data = Paths.get(tempDir.toString(), "test.txt").toFile();
+    pred = Paths.get(tempDir.toString(), "predictions.txt").toFile();
     System.out.println(tempDir);
-    File model = Paths.get(tempDir.toString(), "readable_model.txt").toFile();
-    File modelBin = Paths.get(tempDir.toString(), "model.bin").toFile();
-
+    model = Paths.get(tempDir.toString(), "readable_model.txt").toFile();
+    modelBin = Paths.get(tempDir.toString(), "model.bin").toFile();
     BufferedWriter writer = new BufferedWriter(new FileWriter(data));
 
     for (int i = 0; i < 10; i++) {
@@ -101,50 +119,10 @@ public class Fuzz {
       }
     }
     writer.close();
+  }
 
-    {
-      runOrExit(String.format("vw -d %s --readable_model %s -f %s", data, model, modelBin));
-      runOrExit(String.format("vw -d %s -t -i %s -p %s", data, modelBin, pred));
-      ReadableModel m = new ReadableModel(tempDir);
-      m.makeSureItWorks(data, pred);
-    }
-
-    {
-      runOrExit(
-          String.format("vw -d %s --readable_model %s -f %s --oaa 10", data, model, modelBin));
-      runOrExit(String.format("vw -d %s -t -i %s -p %s", data, modelBin, pred));
-      ReadableModel m = new ReadableModel(tempDir);
-      m.makeSureItWorks(data, pred);
-    }
-
-    {
-      runOrExit(String.format("vw -d %s --readable_model %s -f %s -q ab", data, model, modelBin));
-      runOrExit(String.format("vw -d %s -t -i %s -p %s", data, modelBin, pred));
-      ReadableModel m = new ReadableModel(tempDir);
-      m.makeSureItWorks(data, pred);
-    }
-
-    {
-      runOrExit(
-          String.format(
-              "vw -d %s --readable_model %s -f %s -q ab -q ac -q cb -q cd", data, model, modelBin));
-      runOrExit(String.format("vw -d %s -t -i %s -p %s", data, modelBin, pred));
-      ReadableModel m = new ReadableModel(tempDir);
-      m.makeSureItWorks(data, pred);
-    }
-
-    {
-      runOrExit(
-          String.format(
-              "vw -d %s --readable_model %s -f %s -q ab -q :: --leave_duplicate_interactions",
-              data, model, modelBin));
-      runOrExit(
-          String.format(
-              "vw -d %s -t -i %s -p %s --leave_duplicate_interactions", data, modelBin, pred));
-      ReadableModel m = new ReadableModel(tempDir);
-      m.makeSureItWorks(data, pred);
-    }
-
+  @After
+  public void tearDown() throws Exception {
     cleanup(tempDir);
   }
 }
