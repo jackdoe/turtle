@@ -7,6 +7,16 @@ public class Feature implements Serializable {
   public float value = 1f;
   public transient int _computed_hash;
 
+  public static Feature fromString(String featureString){
+     String[] parts = featureString.split(":");
+     String name = parts[0];
+     float value = 1f;
+     if (parts.length>1){
+    	value = Float.parseFloat(parts[1]);
+     }
+     return new Feature(name, value);
+  }
+
   public Feature() {}
 
   public Feature(String n) {
