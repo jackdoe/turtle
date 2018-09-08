@@ -171,7 +171,6 @@ public class ReadableModel {
 
     BufferedReader brTest = new BufferedReader(new FileReader(testFile));
     BufferedReader brPred = new BufferedReader(new FileReader(predFile));
-    // perl -e 'for (1..1000) { my $r = int(rand(2)) == 1 ? 1 : -1; print "$r |f a b c\n"}'
     try {
       String testLine;
       String predLine;
@@ -204,11 +203,13 @@ public class ReadableModel {
         }
 
         float pred = Float.parseFloat(predLine);
-        if (pred - predict(doc)[0] > 0.01) {
-          throw new IllegalStateException(
-              String.format(
-                  "prediction: %f, expected: %f, test line: %s pred line: %s",
-                  predict(doc)[0], pred, testLine, predLine));
+        for (int i = 0; i < oaa; i++) {
+          if (pred - predict(doc)[i] > 0.01) {
+            throw new IllegalStateException(
+                String.format(
+                    "klass %d: prediction: %f, expected: %f, test line: %s pred line: %s",
+                    i, predict(doc)[i], pred, testLine, predLine));
+          }
         }
       }
     } finally {
@@ -240,6 +241,7 @@ public class ReadableModel {
     final float[] out = new float[oaa];
     // TODO: ngrams skips
     // TODO: --cubic hash calculation
+
     input.namespaces.forEach(
         n -> {
           int namespaceHash = n.namespace.length() == 0 ? 0 : VWMurmur.hash(n.namespace, seed);
@@ -263,7 +265,7 @@ public class ReadableModel {
       //         foreach nsB.feature b
       //            bucket = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
 
-      if (!quadraticAnyToAny) {
+      if (quadraticAnyToAny) {
         input.namespaces.forEach(
             ans -> {
               input.namespaces.forEach(
@@ -291,6 +293,7 @@ public class ReadableModel {
               if (n.namespace.length() == 0) return;
               prebuild.computeIfAbsent(n.namespace.charAt(0), k -> new ArrayList<>()).add(n);
             });
+
         input.namespaces.forEach(
             ans -> {
               Set<Character> interactStartingWith = quadratic.get(ans.namespace.charAt(0));
