@@ -14,6 +14,7 @@ import java.util.function.BiConsumer;
 public class ReadableModel {
   // https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af
   // https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction
+
   public static final boolean DEBUG = false;
   public static final int intercept = 11650396;
   static final int FNV_prime = 16777619;
@@ -76,28 +77,27 @@ public class ReadableModel {
     boolean inHeader = true;
     multiClassBits = 0;
     BufferedReader br = new BufferedReader(new FileReader(f));
+    // TODO: more robust parsing
     try {
-      String x;
-      int lineNum = 0;
-      while ((x = br.readLine()) != null) {
-
+      String line;
+      while ((line = br.readLine()) != null) {
         if (inHeader) {
-          if (x.equals(":0")) {
+          if (line.equals(":0")) {
             inHeader = false;
           }
-          if (x.contains("bits:")) {
-            bits = Integer.parseInt(getSecondValue(x));
+          if (line.contains("bits:")) {
+            bits = Integer.parseInt(getSecondValue(line));
             weights = new float[(1 << bits)];
           }
-          if (x.contains("Min label")) {
-            minLabel = Float.parseFloat(getSecondValue(x));
+          if (line.contains("Min label")) {
+            minLabel = Float.parseFloat(getSecondValue(line));
           }
-          if (x.contains("Max label")) {
-            maxLabel = Float.parseFloat(getSecondValue(x));
+          if (line.contains("Max label")) {
+            maxLabel = Float.parseFloat(getSecondValue(line));
           }
-          if (x.contains("options")) {
+          if (line.contains("options")) {
             extractOptions(
-                x.split(":", 2)[1],
+                line.split(":", 2)[1],
                 (key, value) -> {
                   if (key.equals("--oaa")) {
                     oaa = Integer.parseInt(value);
@@ -120,6 +120,26 @@ public class ReadableModel {
                   }
                   if (key.equals("--quadratic")) {
                     if (value.equals("::")) {
+                      // TODO: the way we do permutation differs from the way we do permutations
+                      // TODO: the results will differ
+                      /*
+
+                      from vw
+                      echo '1 |aa x:1 y:2 ' | vw -f x.bin -a -q :: 2>&1 | grep Constant | tr "\t" "\n" | sort
+                      aa^x*aa^x:113732:1:0@0
+                      aa^x*aa^y:189809:2:0@0
+                      aa^x:63954:1:0@0
+                      aa^y*aa^y:125762:4:0@0
+                      aa^y:237799:2:0@0
+
+                      and we generate
+                      aa^x:63954:1:0.000000
+                      aa^y:237799:1:0.000000
+                      aa^x*aa^x:113732:1:0.000000
+                      aa^x*aa^y:189809:1:0.000000
+                      aa^y*aa^x:176759:1:0.000000
+                      aa^y*aa^y:125762:1:0.000000
+                       */
                       quadraticAnyToAny = true;
                     } else {
                       quadratic
@@ -133,35 +153,31 @@ public class ReadableModel {
                 });
           }
         } else {
-          String[] v = x.split(":");
+          String[] v = line.split(":");
           int bucket = Integer.parseInt(v[0]);
           float w = Float.parseFloat(v[1]);
           weights[bucket] = w;
         }
-
-        lineNum++;
       }
     } finally {
       br.close();
     }
-    // TODO: more robust parsing
 
     mask = (1 << bits) - 1;
   }
 
   public ReadableModel(File root) throws Exception {
-    if (!root.isDirectory()) {
-      throw new IllegalArgumentException(
-          String.format(
-              "usage: %s/readable_model.txt, %s/test.txt, %s.predictions.txt", root, root, root));
-    }
-    File model = Paths.get(root.toString(), "readable_model.txt").toFile();
-    File test = Paths.get(root.toString(), "test.txt").toFile();
-    File predictions = Paths.get(root.toString(), "predictions.txt").toFile();
-    loadReadableModel(model);
+    if (root.isDirectory()) {
+      File model = Paths.get(root.toString(), "readable_model.txt").toFile();
+      File test = Paths.get(root.toString(), "test.txt").toFile();
+      File predictions = Paths.get(root.toString(), "predictions.txt").toFile();
+      loadReadableModel(model);
 
-    if (test.exists() && predictions.exists()) {
-      makeSureItWorks(test, predictions);
+      if (test.exists() && predictions.exists()) {
+        makeSureItWorks(test, predictions);
+      }
+    } else {
+      loadReadableModel(root);
     }
   }
 
@@ -271,6 +287,7 @@ public class ReadableModel {
     if (DEBUG) {
       System.out.println("-----------");
     }
+
     final float[] out = new float[oaa];
     // TODO: ngrams skips
     // TODO: --cubic hash calculation
@@ -315,6 +332,7 @@ public class ReadableModel {
                                 int fnv = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
                                 for (int klass = 0; klass < oaa; klass++) {
                                   int bucket = getBucket(fnv, klass);
+
                                   if (DEBUG) {
                                     System.out.println(
                                         String.format(
@@ -326,6 +344,7 @@ public class ReadableModel {
                                             bucket,
                                             weights[bucket]));
                                   }
+
                                   out[klass] += a.value * b.value * weights[bucket];
                                 }
                               });
@@ -392,7 +411,8 @@ public class ReadableModel {
         out[klass] += weights[bucket];
       }
     }
-    // TODO: clip if requested
+
+    // TODO: clip if requested as per https://github.com/jackdoe/turtle/issues/1
     return out;
   }
 }

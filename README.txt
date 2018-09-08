@@ -38,7 +38,16 @@ if you want to make sure your parameters are supported, in the repeatable_model.
 add test.txt and predictions.txt (using -p from vw) and it will automatically
 test if turtle gets the same predictions as the wabbit.
 
+if you pass file to ReadableModel it will just try to load the file
+
+
 check out resources/test for more examples
+
+
+## known bugs
+
+* -q ::
+  the way vw does permutation is different, and it produces different results
 
 ## thanks
 
