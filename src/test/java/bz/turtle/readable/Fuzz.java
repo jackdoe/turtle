@@ -29,8 +29,8 @@ public class Fuzz {
     StringBuilder sb = new StringBuilder();
     sb.append(klass);
     sb.append(" ");
-    for (int nsA = 0; nsA < 4; nsA++) {
-      for (int nsB = 0; nsB < 4; nsB++) {
+    for (int nsA = 0; nsA < 2; nsA++) {
+      for (int nsB = 0; nsB < 1; nsB++) {
         String ns =
             Character.toString(alphabet.charAt(nsA))
                 + "_"
@@ -38,13 +38,13 @@ public class Fuzz {
         sb.append("|");
         sb.append(ns);
         sb.append(" ");
-        for (int i = 1; i < 5; i++) {
-          sb.append("num_");
-          sb.append((char) (r.nextInt(26) + 'a'));
-          sb.append(":");
-          sb.append(i);
-          sb.append(" ");
-        }
+        //        for (int i = 1; i < 5; i++) {
+        //          sb.append("num_");
+        //          sb.append((char) (r.nextInt(26) + 'a'));
+        //          sb.append(":");
+        //          sb.append(i);
+        //          sb.append(" ");
+        //        }
 
         for (int i = 0; i < 3; i++) {
           sb.append("cat_");
@@ -103,7 +103,7 @@ public class Fuzz {
     runVW("-q ab -q cd -q ac -q bc", "");
 
     // XXX: accumulates error with many namespaces
-    runVW("-q :: --leave_duplicate_interactions", "--leave_duplicate_interactions");
+    runVW("-q ::", "");
   }
 
   File tempDir, data, pred, model, modelBin;
@@ -118,7 +118,7 @@ public class Fuzz {
     modelBin = Paths.get(tempDir.toString(), "model.bin").toFile();
     BufferedWriter writer = new BufferedWriter(new FileWriter(data));
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 10; i++) {
       for (int klass = 1; klass < 10; klass++) {
         writer.write(createExample(klass));
       }

@@ -14,6 +14,7 @@ import java.util.function.BiConsumer;
 public class ReadableModel {
   // https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af
   // https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction
+  public static final boolean DEBUG = false;
   public static final int intercept = 11650396;
   static final int FNV_prime = 16777619;
 
@@ -86,12 +87,17 @@ public class ReadableModel {
 
   public void loadReadableModel(File f) throws Exception {
     bits = 0;
+    // FIXME ffs final function
+    boolean[] inHeader = new boolean[] {true};
     multiClassBits = 0;
     // TODO: more robust parsing
     readLineByLine(
         f,
         (lineNum, x) -> {
-          if (lineNum < 11) {
+          if (inHeader[0]) {
+            if (x.equals(":0")) {
+              inHeader[0] = false;
+            }
             if (x.contains("bits:")) {
               bits = Integer.parseInt(getSecondValue(x));
               weights = new float[(1 << bits)];
@@ -269,6 +275,9 @@ public class ReadableModel {
   }
 
   public float[] predict(Doc input) {
+    if (DEBUG) {
+      System.out.println("-----------");
+    }
     final float[] out = new float[oaa];
     // TODO: ngrams skips
     // TODO: --cubic hash calculation
@@ -283,6 +292,11 @@ public class ReadableModel {
                 f._computed_hash = featureHash;
                 for (int klass = 0; klass < oaa; klass++) {
                   int bucket = getBucket(featureHash, klass);
+                  if (DEBUG) {
+                    System.out.println(
+                        String.format(
+                            "%s^%s:%d:1:%f", n.namespace, f.name, bucket, weights[bucket]));
+                  }
                   out[klass] += f.value * weights[bucket];
                 }
               });
@@ -301,7 +315,6 @@ public class ReadableModel {
             ans -> {
               input.namespaces.forEach(
                   bns -> {
-                    if (ans.namespace.equals(bns.namespace)) return;
                     ans.features.forEach(
                         a -> {
                           bns.features.forEach(
@@ -309,6 +322,17 @@ public class ReadableModel {
                                 int fnv = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
                                 for (int klass = 0; klass < oaa; klass++) {
                                   int bucket = getBucket(fnv, klass);
+                                  if (DEBUG) {
+                                    System.out.println(
+                                        String.format(
+                                            "%s^%s*%s^%s:%d:1:%f",
+                                            ans.namespace,
+                                            a.name,
+                                            bns.namespace,
+                                            b.name,
+                                            bucket,
+                                            weights[bucket]));
+                                  }
                                   out[klass] += a.value * b.value * weights[bucket];
                                 }
                               });
@@ -343,6 +367,18 @@ public class ReadableModel {
                                       for (int klass = 0; klass < oaa; klass++) {
                                         int bucket = getBucket(fnv, klass);
                                         // TODO: check how is that computed for numerical features
+                                        if (DEBUG) {
+                                          System.out.println(
+                                              String.format(
+                                                  "%s^%s*%s^%s:%d:1:%f",
+                                                  ans.namespace,
+                                                  a.name,
+                                                  bns.namespace,
+                                                  b.name,
+                                                  bucket,
+                                                  weights[bucket]));
+                                        }
+
                                         out[klass] += a.value * b.value * weights[bucket];
                                       }
                                     });
@@ -356,6 +392,10 @@ public class ReadableModel {
     if (input.hasIntercept) {
       for (int klass = 0; klass < oaa; klass++) {
         int bucket = getBucket(intercept, klass);
+        if (DEBUG) {
+          System.out.println(String.format("%s:%d:1:%f", "Constant", bucket, weights[bucket]));
+        }
+
         out[klass] += weights[bucket];
       }
     }

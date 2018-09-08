@@ -44,6 +44,16 @@ public class ReadableModelTest {
   }
 
   @Test
+  public void testErrorPileup() throws Exception {
+    File tdir =
+        new File(this.getClass().getClassLoader().getResource("test_error_pileup").getFile());
+    ReadableModel m = new ReadableModel(tdir);
+
+    tdir = new File(this.getClass().getClassLoader().getResource("test_error_pileup2").getFile());
+    m = new ReadableModel(tdir);
+  }
+
+  @Test
   public void predictQuadraticNumeric() throws Exception {
     File tdir = new File(this.getClass().getClassLoader().getResource("testqnum").getFile());
     ReadableModel m = new ReadableModel(tdir);
@@ -51,8 +61,16 @@ public class ReadableModelTest {
     assertEquals(
         m.predict(
                 new Doc(
-                    new Namespace("a", Feature.fromString("numa:2"), Feature.fromString("cat1"), Feature.fromString("cat2")),
-                    new Namespace("b", Feature.fromString("numb:4"), Feature.fromString("cat3"), Feature.fromString("cat4"))))[0],
+                    new Namespace(
+                        "a",
+                        Feature.fromString("numa:2"),
+                        Feature.fromString("cat1"),
+                        Feature.fromString("cat2")),
+                    new Namespace(
+                        "b",
+                        Feature.fromString("numb:4"),
+                        Feature.fromString("cat3"),
+                        Feature.fromString("cat4"))))[0],
         0.864206,
         0.001);
   }
