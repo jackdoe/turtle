@@ -71,87 +71,81 @@ public class ReadableModel {
   250698:0.192113
   259670:0.343652
   */
-  public void readLineByLine(File f, BiConsumer<Integer, String> cb) throws Exception {
+  public void loadReadableModel(File f) throws Exception {
+    bits = 0;
+    // FIXME ffs final function
+    boolean inHeader = true;
+    multiClassBits = 0;
     BufferedReader br = new BufferedReader(new FileReader(f));
     try {
       String x;
       int lineNum = 0;
       while ((x = br.readLine()) != null) {
-        cb.accept(lineNum, x);
+
+        if (inHeader) {
+          if (x.equals(":0")) {
+            inHeader = false;
+          }
+          if (x.contains("bits:")) {
+            bits = Integer.parseInt(getSecondValue(x));
+            weights = new float[(1 << bits)];
+          }
+          if (x.contains("Min label")) {
+            minLabel = Float.parseFloat(getSecondValue(x));
+          }
+          if (x.contains("Max label")) {
+            maxLabel = Float.parseFloat(getSecondValue(x));
+          }
+          if (x.contains("options")) {
+            extractOptions(
+                x.split(":", 2)[1],
+                (key, value) -> {
+                  if (key.equals("--oaa")) {
+                    oaa = Integer.parseInt(value);
+
+                    multiClassBits = 0;
+                    int ml = oaa;
+                    while (ml > 0) {
+                      multiClassBits++;
+                      ml >>= 1;
+                    }
+                  }
+
+                  if (key.equals("--hash_seed")) {
+                    seed = Integer.parseInt(value);
+                  }
+                  if (key.equals("--hash")) {
+                    if (value.equals("all")) {
+                      hashAll = true;
+                    }
+                  }
+                  if (key.equals("--quadratic")) {
+                    if (value.equals("::")) {
+                      quadraticAnyToAny = true;
+                    } else {
+                      quadratic
+                          .computeIfAbsent(value.charAt(0), k -> new HashSet<>())
+                          .add(value.charAt(1));
+                    }
+                  }
+                  // TODO: --cubic
+                  // TODO: ngrams, skips
+                  // TODO: lda
+                });
+          }
+        } else {
+          String[] v = x.split(":");
+          int bucket = Integer.parseInt(v[0]);
+          float w = Float.parseFloat(v[1]);
+          weights[bucket] = w;
+        }
+
         lineNum++;
       }
     } finally {
       br.close();
     }
-  }
-
-  public void loadReadableModel(File f) throws Exception {
-    bits = 0;
-    // FIXME ffs final function
-    boolean[] inHeader = new boolean[] {true};
-    multiClassBits = 0;
     // TODO: more robust parsing
-    readLineByLine(
-        f,
-        (lineNum, x) -> {
-          if (inHeader[0]) {
-            if (x.equals(":0")) {
-              inHeader[0] = false;
-            }
-            if (x.contains("bits:")) {
-              bits = Integer.parseInt(getSecondValue(x));
-              weights = new float[(1 << bits)];
-            }
-            if (x.contains("Min label")) {
-              minLabel = Float.parseFloat(getSecondValue(x));
-            }
-            if (x.contains("Max label")) {
-              maxLabel = Float.parseFloat(getSecondValue(x));
-            }
-            if (x.contains("options")) {
-              extractOptions(
-                  x.split(":", 2)[1],
-                  (key, value) -> {
-                    if (key.equals("--oaa")) {
-                      oaa = Integer.parseInt(value);
-
-                      multiClassBits = 0;
-                      int ml = oaa;
-                      while (ml > 0) {
-                        multiClassBits++;
-                        ml >>= 1;
-                      }
-                    }
-
-                    if (key.equals("--hash_seed")) {
-                      seed = Integer.parseInt(value);
-                    }
-                    if (key.equals("--hash")) {
-                      if (value.equals("all")) {
-                        hashAll = true;
-                      }
-                    }
-                    if (key.equals("--quadratic")) {
-                      if (value.equals("::")) {
-                        quadraticAnyToAny = true;
-                      } else {
-                        quadratic
-                            .computeIfAbsent(value.charAt(0), k -> new HashSet<>())
-                            .add(value.charAt(1));
-                      }
-                    }
-                    // TODO: --cubic
-                    // TODO: ngrams, skips
-                    // TODO: lda
-                  });
-            }
-          } else {
-            String[] v = x.split(":");
-            int bucket = Integer.parseInt(v[0]);
-            float w = Float.parseFloat(v[1]);
-            weights[bucket] = w;
-          }
-        });
 
     mask = (1 << bits) - 1;
   }
