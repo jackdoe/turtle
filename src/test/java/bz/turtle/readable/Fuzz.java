@@ -29,8 +29,8 @@ public class Fuzz {
     StringBuilder sb = new StringBuilder();
     sb.append(klass);
     sb.append(" ");
-    for (int nsA = 0; nsA < 2; nsA++) {
-      for (int nsB = 0; nsB < 1; nsB++) {
+    for (int nsA = 0; nsA < 20; nsA++) {
+      for (int nsB = 0; nsB < 10; nsB++) {
         String ns =
             Character.toString(alphabet.charAt(nsA))
                 + "_"
@@ -38,13 +38,13 @@ public class Fuzz {
         sb.append("|");
         sb.append(ns);
         sb.append(" ");
-        //        for (int i = 1; i < 5; i++) {
-        //          sb.append("num_");
-        //          sb.append((char) (r.nextInt(26) + 'a'));
-        //          sb.append(":");
-        //          sb.append(i);
-        //          sb.append(" ");
-        //        }
+        for (int i = 1; i < 5; i++) {
+          sb.append("num_");
+          sb.append((char) (r.nextInt(26) + 'a'));
+          sb.append(":");
+          sb.append(i);
+          sb.append(" ");
+        }
 
         for (int i = 0; i < 3; i++) {
           sb.append("cat_");
