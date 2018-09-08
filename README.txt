@@ -50,6 +50,7 @@ wouldn't have happened without the help of those guys
 ## todo
 
 * more tests
+* verify the checksum of the model
 * support for --cubic
 * support for ngrams and skips
 * support for --lrq
