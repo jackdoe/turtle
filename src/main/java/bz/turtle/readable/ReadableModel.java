@@ -123,6 +123,7 @@ public class ReadableModel {
                     }
                     // TODO: --cubic
                     // TODO: ngrams, skips
+                    // TODO: lda
                   });
             }
           } else {
@@ -132,6 +133,7 @@ public class ReadableModel {
             weights[bucket] = w;
           }
         });
+
     mask = (1 << bits) - 1;
   }
 

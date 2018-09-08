@@ -28,9 +28,10 @@ m.predict(
           new Doc(
               new Namespace(
                   "your-namespace",
-                  new Feature("a"),
-                  new Feature("b"),
-                  new Feature("c"))));
+                  new Feature("a",1.0),
+                  new Feature("b",1.0),
+                  new Feature("c",1.0))));
+// value 1.0 is default
 
 ## make sure it works
 if you want to make sure your parameters are supported, in the repeatable_model.txt
