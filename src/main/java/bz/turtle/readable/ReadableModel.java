@@ -17,15 +17,15 @@ import java.util.function.BiConsumer;
  * bucket then using same hashing of vw finds the correct bucket for the input features and computes
  * the inner product.
  *
- * <p>check out https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af and
- * https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction for more
- * information
+ * <p>check out this <a
+ * href="https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af">gist</a> and <a
+ * href="https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction">Feature-Hashing-and-Extraction</a>
+ * for more information
  *
  * <p>Example:
  *
  * <pre>
  * execute: echo "1 |ns a b c:4" | vw --readable_model /tmp/readable_model.txt
- *
  *
  *
  * ReadableModel m = new ReadableModel(new File("/tmp/readable_model.txt"));
@@ -57,6 +57,10 @@ public class ReadableModel {
   private float minLabel = 0;
   private float maxLabel = 0;
 
+  private int ngram = 0;
+  private int skip = 0;
+  private String link = "identity";
+
   // -q ab
   // -q ac
   private Map<Character, Set<Character>> quadratic = new HashMap<>();
@@ -73,14 +77,26 @@ public class ReadableModel {
     }
   }
 
-  private String getSecondValue(String s) {
-    return s.split(":")[1];
+  private int intOrZero(String s) {
+    if (s.equals("")) {
+      return 0;
+    }
+    return Integer.parseInt(s);
   }
+
+  private String getSecondValue(String s) {
+    String[] splitted = s.split(":");
+    if (splitted.length == 1) {
+      return "";
+    }
+    return splitted[1].trim();
+  }
+
   /**
-   * @param file the vw --readable_model file.txt
-   * @throws IOException if file reading fails
-   *     <p>The contents of the file looks like this
-   *     <pre>
+   * Loads the model from a file output from vw --readable_file. The contents of the file looks like
+   * this:
+   *
+   * <pre>
    *   Version 8.6.1
    *   Id
    *   Min label:0
@@ -99,10 +115,15 @@ public class ReadableModel {
    *   250698:0.192113
    *   259670:0.343652
    * </pre>
-   *     <b>155256:0.192113</b> is hash bucket:weight, we use the same hashing algorithm as vw to
-   *     find the features in the model
+   *
+   * <b>155256:0.192113</b> is hash bucket:weight, we use the same hashing algorithm as vw to find
+   * the features in the model
+   *
+   * @param file the vw --readable_model file.txt
+   * @throws IOException if file reading fails
+   * @throws UnsupportedOperationException if the model was built with options we dont support yet
    */
-  public void loadReadableModel(File file) throws IOException {
+  public void loadReadableModel(File file) throws IOException, UnsupportedOperationException {
     bits = 0;
     boolean inHeader = true;
     multiClassBits = 0;
@@ -125,6 +146,19 @@ public class ReadableModel {
           if (line.contains("Max label")) {
             maxLabel = Float.parseFloat(getSecondValue(line));
           }
+          if (line.contains("ngram")) {
+            ngram = intOrZero(getSecondValue(line));
+            if (ngram != 0) {
+              throw new UnsupportedOperationException("ngrams are not supported yet");
+            }
+          }
+          if (line.contains("skip")) {
+            skip = intOrZero(getSecondValue(line));
+            if (skip != 0) {
+              throw new UnsupportedOperationException("skip is not supported yet");
+            }
+          }
+
           if (line.contains("options")) {
             extractOptions(
                 line.split(":", 2)[1],
@@ -140,12 +174,23 @@ public class ReadableModel {
                     }
                   }
 
+                  if (key.equals("--cubic")) {
+                    throw new UnsupportedOperationException("we do not support --cubic yet");
+                  }
+
                   if (key.equals("--hash_seed")) {
                     seed = Integer.parseInt(value);
                   }
                   if (key.equals("--hash")) {
                     if (value.equals("all")) {
                       hashAll = true;
+                    }
+                  }
+                  if (key.equals("--link")) {
+                    if (!value.equals("identity")) {
+                      throw new UnsupportedOperationException("only --link identity is supported");
+                    } else {
+                      link = value;
                     }
                   }
                   if (key.equals("--quadratic")) {
@@ -197,16 +242,23 @@ public class ReadableModel {
   }
 
   /**
+   * Takes a file or directory and loads the model.
+   *
+   * <p>If you pass a directory as input it will look for 3 files
+   *
+   * <ul>
+   *   *
+   *   <li>readable_model.txt *
+   *   <li>test.txt *
+   *   <li>predictions.txt *
+   * </ul>
+   *
+   * * if test.txt and predictions.txt exists it will automatically run makeSureItWorks() *
+   *
+   * <p>If you pass a file it will just load the model
+   *
    * @param root file or directory to read from
    * @throws IOException if reading fails
-   *     <p>If you pass a directory as input it will look for 3 files
-   *     <ul>
-   *       <li>readable_model.txt
-   *       <li>test.txt
-   *       <li>predictions.txt
-   *     </ul>
-   *     if test.txt and predictions.txt exists it will automatically run makeSureItWorks()
-   *     <p>If you pass a file it will just load the model
    */
   public ReadableModel(File root) throws IOException {
     if (root.isDirectory()) {
@@ -322,8 +374,8 @@ public class ReadableModel {
    *     0 unless you pass --hash_seed to vw
    * @param featureName the feature name
    * @return the hash of the feature according to vw
-   *     <p>check out
-   *     https://github.com/JohnLangford/vowpal_wabbit/blob/579c34d2d2fd151b419bea54d9921fc7f3f55bbc/vowpalwabbit/parse_primitives.cc#L48
+   *     <p>check out <a
+   *     href="https://github.com/JohnLangford/vowpal_wabbit/blob/579c34d2d2fd151b419bea54d9921fc7f3f55bbc/vowpalwabbit/parse_primitives.cc#L48">parse_primitives.cc</a>
    */
   public int hashOf(int mmNamespaceHash, String featureName) {
     int featureHash = 0;
