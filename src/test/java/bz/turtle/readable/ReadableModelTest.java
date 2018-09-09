@@ -208,6 +208,25 @@ public class ReadableModelTest {
         0.0001);
    }
 
+  @Test
+  public void testProbabilities() throws Exception{
+    File tdir = new File(this.getClass().getClassLoader().getResource("testprobabilities").getFile());
+    ReadableModel m = new ReadableModel(tdir, true, true);
+    assertEquals(
+        m.predict(
+                new Doc(
+                    new Namespace(
+                        "",
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"))))[0],
+        0.471778,
+        0.0001);
+   }
 
 
 }

@@ -27,6 +27,7 @@ public class Doc implements Serializable {
    * in case you are using it you <b>not</b> to pass hasIntercept=false
    * */
   public boolean hasIntercept = true;
+  public boolean probabilities = false;
 
   public Doc() {
     namespaces = new ArrayList<>();

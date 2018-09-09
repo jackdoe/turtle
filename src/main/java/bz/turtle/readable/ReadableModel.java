@@ -276,7 +276,7 @@ public class ReadableModel {
    * @throws IOException if reading fails
    * @throws UnsupportedOperationException if the model was built with options we dont support yet
    */
-  public ReadableModel(File root) throws IOException, UnsupportedOperationException {
+  public ReadableModel(File root, boolean hasIntercept, boolean probabilities) throws IOException, UnsupportedOperationException {
     if (root.isDirectory()) {
       File model = Paths.get(root.toString(), "readable_model.txt").toFile();
       File test = Paths.get(root.toString(), "test.txt").toFile();
@@ -284,12 +284,17 @@ public class ReadableModel {
       loadReadableModel(model);
 
       if (test.exists() && predictions.exists()) {
-        makeSureItWorks(test, predictions);
+        makeSureItWorks(test, predictions, hasIntercept, probabilities);
       }
     } else {
       loadReadableModel(root);
     }
   }
+
+ public ReadableModel(File root) throws IOException, UnsupportedOperationException {
+     this(root, true, false);
+ }
+
 
   /**
    * read the test file and pred file and try to do the same predictions
@@ -299,7 +304,7 @@ public class ReadableModel {
    * @throws IOException if file reading fails
    * @throws IllegalStateException if predictions mismatch
    */
-  public void makeSureItWorks(File testFile, File predFile)
+  public void makeSureItWorks(File testFile, File predFile, boolean hasIntercept, boolean probabilities)
       throws IOException, IllegalStateException {
     /* to make sure we predict the same values as VW */
 
@@ -313,6 +318,8 @@ public class ReadableModel {
       while ((testLine = brTest.readLine()) != null && ((predLine = brPred.readLine()) != null)) {
         String[] test = testLine.split("\\s+");
         Doc doc = new Doc();
+        doc.probabilities = probabilities;
+        doc.hasIntercept = hasIntercept;
         boolean hasNamespace = false;
         for (int i = 0; i < test.length; i++) {
           // label |ns f:value f f f \ns
@@ -541,8 +548,15 @@ public class ReadableModel {
       }
     }
 
-    this.clip(out);
-    this.link(out);
+    if (input.probabilities){
+      this.clip(out);
+      this.link = this.logistic;
+      this.link(out);
+      this.normalize(out);
+    } else {
+      this.clip(out);
+      this.link(out);
+    }
     return out;
   }
 
@@ -561,4 +575,13 @@ public class ReadableModel {
       out[klass] = this.link.apply(out[klass]);
     }
   }
+
+  protected void normalize(float[] out){
+    float sum = 0;
+    for (float o : out) sum += o;
+    for (int klass = 0; klass < this.oaa; klass++) {
+      out[klass] = out[klass]/sum;
+    }
+  }
+
 }
