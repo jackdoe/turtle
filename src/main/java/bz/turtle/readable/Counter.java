@@ -14,6 +14,7 @@ public class Counter {
     count++;
   }
 
+  /** @return sum/count */
   public float get() {
     if (count == 0) return 0;
     return sum / count;

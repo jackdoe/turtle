@@ -42,12 +42,6 @@ public class ReadableModel {
   private static final int intercept = 11650396;
   private final int FNV_prime = 16777619;
 
-  /** <b>thread unsafe</b> average prediction value per second in the last 60 seconds */
-  public History predictionHistory = new History("average_prediction");
-
-  /** <b>thread unsafe</b> amount of missing features requested per second in the last 60 seconds */
-  public History missingFeatureHistory = new History("missing_history");
-
   private boolean hasIntercept = true;
   /**
    * This is the actual model of size 2**bits if you build something with vw -b 18 it will be of
@@ -440,6 +434,15 @@ public class ReadableModel {
    * @return prediction per class
    */
   public float[] predict(PredictionRequest input) {
+    return predict(input, null);
+  }
+
+  /**
+   * @param input PredictionRequest to evaluate
+   * @param stats PredictionStats if you want keep track of some basic stats
+   * @return prediction per class
+   */
+  public float[] predict(PredictionRequest input, PredictionStats stats) {
     if (DEBUG) {
       System.out.println("-----------");
     }
@@ -464,7 +467,12 @@ public class ReadableModel {
                             "%s^%s:%d:1:%f", n.namespace, f.name, bucket, weights[bucket]));
                   }
 
-                  if (weights[bucket] == 0) missingFeatureHistory.add(1);
+                  if (stats != null) {
+                    if (weights[bucket] == 0) {
+                      stats.missingFeatures.add(1);
+                    }
+                    stats.featuresLookedUp.add(1);
+                  }
                   out[klass] += f.value * weights[bucket];
                 }
               });
@@ -502,7 +510,12 @@ public class ReadableModel {
                                               bucket,
                                               weights[bucket]));
                                     }
-                                    if (weights[bucket] == 0) missingFeatureHistory.add(1);
+                                    if (stats != null) {
+                                      if (weights[bucket] == 0) {
+                                        stats.missingFeatures.add(1);
+                                      }
+                                      stats.featuresLookedUp.add(1);
+                                    }
 
                                     out[klass] += a.value * b.value * weights[bucket];
                                   }
@@ -549,7 +562,13 @@ public class ReadableModel {
                                                     bucket,
                                                     weights[bucket]));
                                           }
-                                          if (weights[bucket] == 0) missingFeatureHistory.add(1);
+                                          if (stats != null) {
+                                            if (weights[bucket] == 0) {
+                                              stats.missingFeatures.add(1);
+                                            }
+                                            stats.featuresLookedUp.add(1);
+                                          }
+
                                           out[klass] += a.value * b.value * weights[bucket];
                                         }
                                       });
@@ -565,14 +584,22 @@ public class ReadableModel {
         if (DEBUG) {
           System.out.println(String.format("%s:%d:1:%f", "Constant", bucket, weights[bucket]));
         }
-        if (weights[bucket] == 0) missingFeatureHistory.add(1);
+        if (stats != null) {
+          if (weights[bucket] == 0) {
+            stats.missingFeatures.add(1);
+          }
+          stats.featuresLookedUp.add(1);
+        }
+
         out[klass] += weights[bucket];
       }
     }
 
-    // uncliped unnormalized pred historuy
-    for (int klass = 0; klass < oaa; klass++) {
-      predictionHistory.add(out[klass]);
+    if (stats != null) {
+      // uncliped unnormalized pred historuy
+      for (int klass = 0; klass < oaa; klass++) {
+        stats.predictions.add(out[klass]);
+      }
     }
 
     if (input.probabilities) {
