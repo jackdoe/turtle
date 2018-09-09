@@ -44,7 +44,7 @@ public class Fuzz {
             ts.data, ts.model, ts.modelBin, optionsTrain));
     runOrExit(
         String.format("vw -d %s -t -i %s -r %s %s", ts.data, ts.modelBin, ts.pred, optionsTest));
-    ReadableModel m = new ReadableModel(ts.tempDir);
+    ReadableModel m = new ReadableModel(ts.model);
     m.makeSureItWorks(ts.data, ts.pred);
   }
 
