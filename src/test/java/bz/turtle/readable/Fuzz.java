@@ -58,9 +58,18 @@ public class Fuzz {
   }
 
   @Test
+  public void testBits() throws Exception {
+    if (vwfound()) {
+      TestSet ts = new TestSet(0, 1000);
+      runVW(ts, "-b 8", "");
+      ts.tearDown();
+    }
+  }
+
+  @Test
   public void testBasic() throws Exception {
     if (vwfound()) {
-      TestSet ts = new TestSet(1, 10000);
+      TestSet ts = new TestSet(0, 1000);
       runVW(ts, "", "");
       ts.tearDown();
     }
