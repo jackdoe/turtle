@@ -180,13 +180,16 @@ public class ReadableModel {
                     throw new UnsupportedOperationException("we do not support --cubic yet");
                   }
                   if (key.equals("--link")) {
-                    if (value.equals("logistic")) {
-                      this.link = this.logistic;
-                    } else if (value.equals("identity")) {
-                      this.link = this.identity;
-                    } else {
-                      throw new UnsupportedOperationException(
-                          "only --link identity or logistic are supported");
+                    switch (value) {
+                      case "logistic":
+                        this.link = this.logistic;
+                        break;
+                      case "identity":
+                        this.link = this.identity;
+                        break;
+                      default:
+                        throw new UnsupportedOperationException(
+                            "only --link identity or logistic are supported");
                     }
                   }
 
@@ -385,7 +388,7 @@ public class ReadableModel {
    *     https://github.com/JohnLangford/vowpal_wabbit/blob/579c34d2d2fd151b419bea54d9921fc7f3f55bbc/vowpalwabbit/parse_primitives.cc#L48
    */
   public int hashOf(int mmNamespaceHash, String featureName) {
-    int featureHash = 0;
+    int featureHash;
     if (hashAll) {
       featureHash = VWMurmur.hash(featureName, mmNamespaceHash);
     } else {
@@ -441,35 +444,34 @@ public class ReadableModel {
 
       if (quadraticAnyToAny) {
         input.namespaces.forEach(
-            ans -> {
-              input.namespaces.forEach(
-                  bns -> {
-                    ans.features.forEach(
-                        a -> {
-                          bns.features.forEach(
-                              b -> {
-                                int fnv = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
-                                for (int klass = 0; klass < oaa; klass++) {
-                                  int bucket = getBucket(fnv, klass);
+            ans ->
+                input.namespaces.forEach(
+                    bns -> {
+                      ans.features.forEach(
+                          a -> {
+                            bns.features.forEach(
+                                b -> {
+                                  int fnv = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
+                                  for (int klass = 0; klass < oaa; klass++) {
+                                    int bucket = getBucket(fnv, klass);
 
-                                  if (DEBUG) {
-                                    System.out.println(
-                                        String.format(
-                                            "%s^%s*%s^%s:%d:1:%f",
-                                            ans.namespace,
-                                            a.name,
-                                            bns.namespace,
-                                            b.name,
-                                            bucket,
-                                            weights[bucket]));
+                                    if (DEBUG) {
+                                      System.out.println(
+                                          String.format(
+                                              "%s^%s*%s^%s:%d:1:%f",
+                                              ans.namespace,
+                                              a.name,
+                                              bns.namespace,
+                                              b.name,
+                                              bucket,
+                                              weights[bucket]));
+                                    }
+
+                                    out[klass] += a.value * b.value * weights[bucket];
                                   }
-
-                                  out[klass] += a.value * b.value * weights[bucket];
-                                }
-                              });
-                        });
-                  });
-            });
+                                });
+                          });
+                    }));
       } else {
         Map<Character, List<Namespace>> prebuild = new HashMap<>();
         // build char -> list of namespaces map so we can work with multiple interactions -q ab -q
@@ -489,32 +491,32 @@ public class ReadableModel {
                     List<Namespace> interactions = prebuild.get(inter);
                     if (interactions == null) return;
                     interactions.forEach(
-                        bns -> {
-                          ans.features.forEach(
-                              a -> {
-                                bns.features.forEach(
-                                    b -> {
-                                      int fnv = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
-                                      for (int klass = 0; klass < oaa; klass++) {
-                                        int bucket = getBucket(fnv, klass);
-                                        // TODO: check how is that computed for numerical features
-                                        if (DEBUG) {
-                                          System.out.println(
-                                              String.format(
-                                                  "%s^%s*%s^%s:%d:1:%f",
-                                                  ans.namespace,
-                                                  a.name,
-                                                  bns.namespace,
-                                                  b.name,
-                                                  bucket,
-                                                  weights[bucket]));
-                                        }
+                        bns ->
+                            ans.features.forEach(
+                                a -> {
+                                  bns.features.forEach(
+                                      b -> {
+                                        int fnv =
+                                            ((a._computed_hash * FNV_prime) ^ b._computed_hash);
+                                        for (int klass = 0; klass < oaa; klass++) {
+                                          int bucket = getBucket(fnv, klass);
+                                          // TODO: check how is that computed for numerical features
+                                          if (DEBUG) {
+                                            System.out.println(
+                                                String.format(
+                                                    "%s^%s*%s^%s:%d:1:%f",
+                                                    ans.namespace,
+                                                    a.name,
+                                                    bns.namespace,
+                                                    b.name,
+                                                    bucket,
+                                                    weights[bucket]));
+                                          }
 
-                                        out[klass] += a.value * b.value * weights[bucket];
-                                      }
-                                    });
-                              });
-                        });
+                                          out[klass] += a.value * b.value * weights[bucket];
+                                        }
+                                      });
+                                }));
                   });
             });
       }
@@ -536,21 +538,19 @@ public class ReadableModel {
     return out;
   }
 
-  protected float[] clip(float[] raw_out) {
+  protected void clip(float[] raw_out) {
     for (int klass = 0; klass < this.oaa; klass++) {
       raw_out[klass] = clip(raw_out[klass]);
     }
-    return raw_out;
   }
 
   protected float clip(float raw_out) {
     return Math.max(Math.min(raw_out, this.maxLabel), this.minLabel);
   }
 
-  protected float[] link(float[] out) {
+  protected void link(float[] out) {
     for (int klass = 0; klass < this.oaa; klass++) {
       out[klass] = this.link.apply(out[klass]);
     }
-    return out;
   }
 }

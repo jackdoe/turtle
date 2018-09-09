@@ -52,7 +52,7 @@ public class VWMurmur {
       case 2:
         k1 ^= (int) data[end + 1] << 8;
       case 1:
-        k1 ^= (int) data[end + 0];
+        k1 ^= (int) data[end];
 
         k1 *= c1;
         k1 = rotl32(k1, 15);
