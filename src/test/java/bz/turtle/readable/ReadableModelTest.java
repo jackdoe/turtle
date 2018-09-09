@@ -1,8 +1,8 @@
 package bz.turtle.readable;
 
-import bz.turtle.readable.input.PredictionRequest;
 import bz.turtle.readable.input.Feature;
 import bz.turtle.readable.input.Namespace;
+import bz.turtle.readable.input.PredictionRequest;
 import org.junit.Test;
 
 import java.io.File;
@@ -113,7 +113,7 @@ public class ReadableModelTest {
   }
 
   @Test
-  public void testClip() throws Exception{
+  public void testClip() throws Exception {
     File tdir = new File(this.getClass().getClassLoader().getResource("testclip").getFile());
     ReadableModel m = new ReadableModel(tdir);
     assertEquals(
@@ -131,7 +131,7 @@ public class ReadableModelTest {
         2,
         0.01);
 
-     assertEquals(
+    assertEquals(
         m.predict(
                 new PredictionRequest(
                     new Namespace(
@@ -145,13 +145,12 @@ public class ReadableModelTest {
                         new Feature("neg"))))[0],
         -2,
         0.01);
-
   }
 
-
   @Test
-  public void testLinkLogistic() throws Exception{
-    File tdir = new File(this.getClass().getClassLoader().getResource("testlinklogistic").getFile());
+  public void testLinkLogistic() throws Exception {
+    File tdir =
+        new File(this.getClass().getClassLoader().getResource("testlinklogistic").getFile());
     ReadableModel m = new ReadableModel(tdir);
     assertEquals(
         m.predict(
@@ -170,7 +169,7 @@ public class ReadableModelTest {
   }
 
   @Test
-  public void testLinkPoisson() throws Exception{
+  public void testLinkPoisson() throws Exception {
     File tdir = new File(this.getClass().getClassLoader().getResource("testlinkpoisson").getFile());
     ReadableModel m = new ReadableModel(tdir);
     assertEquals(
@@ -187,9 +186,10 @@ public class ReadableModelTest {
                         new Feature("pos"))))[0],
         7.38905,
         0.0001);
-   }
+  }
+
   @Test
-  public void testLinkGlf1() throws Exception{
+  public void testLinkGlf1() throws Exception {
     File tdir = new File(this.getClass().getClassLoader().getResource("testlinkglf1").getFile());
     ReadableModel m = new ReadableModel(tdir);
     assertEquals(
@@ -206,11 +206,12 @@ public class ReadableModelTest {
                         new Feature("pos"))))[0],
         0.76159,
         0.0001);
-   }
+  }
 
   @Test
-  public void testProbabilities() throws Exception{
-    File tdir = new File(this.getClass().getClassLoader().getResource("testprobabilities").getFile());
+  public void testProbabilities() throws Exception {
+    File tdir =
+        new File(this.getClass().getClassLoader().getResource("testprobabilities").getFile());
     ReadableModel m = new ReadableModel(tdir, true, true);
     assertEquals(
         m.predict(
@@ -226,7 +227,5 @@ public class ReadableModelTest {
                         new Feature("pos"))))[0],
         0.471778,
         0.0001);
-   }
-
-
+  }
 }

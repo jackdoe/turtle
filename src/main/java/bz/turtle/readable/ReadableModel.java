@@ -1,8 +1,8 @@
 package bz.turtle.readable;
 
-import bz.turtle.readable.input.PredictionRequest;
 import bz.turtle.readable.input.Feature;
 import bz.turtle.readable.input.Namespace;
+import bz.turtle.readable.input.PredictionRequest;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -41,6 +41,17 @@ public class ReadableModel {
   private static final boolean DEBUG = false;
   private static final int intercept = 11650396;
   private final int FNV_prime = 16777619;
+
+  /**
+   *
+   * average prediction value per second in the last 60 seconds
+   * */
+  public History predictionHistory = new History("average_prediction");
+
+  /**
+   * amount of missing features requested per second in the last 60 seconds
+   * */
+  public History missingFeatureHistory = new History("missing_history");
 
   private boolean hasIntercept = true;
   /**
@@ -349,7 +360,8 @@ public class ReadableModel {
               weight = Float.parseFloat(s[1]);
             }
 
-            predictionRequest.namespaces
+            predictionRequest
+                .namespaces
                 .get(predictionRequest.namespaces.size() - 1)
                 .features
                 .add(new Feature(feature, weight));
@@ -429,7 +441,7 @@ public class ReadableModel {
   }
 
   /**
-   * @param input Document to evaluate
+   * @param input PredictionRequest to evaluate
    * @return prediction per class
    */
   public float[] predict(PredictionRequest input) {
@@ -456,6 +468,8 @@ public class ReadableModel {
                         String.format(
                             "%s^%s:%d:1:%f", n.namespace, f.name, bucket, weights[bucket]));
                   }
+
+                  if (weights[bucket] == 0) missingFeatureHistory.add(1);
                   out[klass] += f.value * weights[bucket];
                 }
               });
@@ -493,6 +507,7 @@ public class ReadableModel {
                                               bucket,
                                               weights[bucket]));
                                     }
+                                    if (weights[bucket] == 0) missingFeatureHistory.add(1);
 
                                     out[klass] += a.value * b.value * weights[bucket];
                                   }
@@ -539,7 +554,7 @@ public class ReadableModel {
                                                     bucket,
                                                     weights[bucket]));
                                           }
-
+                                          if (weights[bucket] == 0) missingFeatureHistory.add(1);
                                           out[klass] += a.value * b.value * weights[bucket];
                                         }
                                       });
@@ -555,9 +570,14 @@ public class ReadableModel {
         if (DEBUG) {
           System.out.println(String.format("%s:%d:1:%f", "Constant", bucket, weights[bucket]));
         }
-
+        if (weights[bucket] == 0) missingFeatureHistory.add(1);
         out[klass] += weights[bucket];
       }
+    }
+
+    // uncliped unnormalized pred historuy
+    for (int klass = 0; klass < oaa; klass++) {
+      predictionHistory.add(out[klass]);
     }
 
     if (input.probabilities) {
@@ -569,6 +589,7 @@ public class ReadableModel {
       this.clip(out);
       this.link(out);
     }
+
     return out;
   }
 
