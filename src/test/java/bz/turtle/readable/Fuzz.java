@@ -86,6 +86,42 @@ public class Fuzz {
     }
   }
 
+  @Test(expected = UnsupportedOperationException.class)
+  public void testCubic() throws Exception {
+    if (vwfound()) {
+      TestSet ts = new TestSet(0, 10);
+      try {
+        runVW(ts, "--cubic abc", "");
+      } finally {
+        ts.tearDown();
+      }
+    }
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testNgram() throws Exception {
+    if (vwfound()) {
+      TestSet ts = new TestSet(0, 10);
+      try {
+        runVW(ts, "--ngram 1", "");
+      } finally {
+        ts.tearDown();
+      }
+    }
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testSkip() throws Exception {
+    if (vwfound()) {
+      TestSet ts = new TestSet(0, 10);
+      try {
+        runVW(ts, "--ngram 2 --skips 1", "");
+      } finally {
+        ts.tearDown();
+      }
+    }
+  }
+
   public static class TestSet {
     File tempDir, data, pred, model, modelBin;
     Random r = new Random();
