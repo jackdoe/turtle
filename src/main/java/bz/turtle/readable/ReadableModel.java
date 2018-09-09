@@ -65,6 +65,8 @@ public class ReadableModel {
   // XXX: incomplete
   private void extractOptions(String o, BiConsumer<String, String> cb) {
     o = o.trim();
+    if (o.isEmpty())
+      return;
     String[] op = o.split("\\s+");
     for (int i = 0; i < op.length; i += 2) {
       cb.accept(op[i], op[i + 1]);
@@ -471,6 +473,17 @@ public class ReadableModel {
     }
 
     // TODO: clip if requested as per https://github.com/jackdoe/turtle/issues/1
-    return out;
+    return clip(out);
+  }
+
+  protected float[] clip(float[] raw_out){
+    for (int klass = 0; klass < oaa; klass++){
+      raw_out[klass] = clip(raw_out[klass]);
+    }
+    return raw_out;
+  }
+
+  protected float clip(float raw_out){
+     return Math.max(Math.min(raw_out, this.maxLabel), this.minLabel);
   }
 }

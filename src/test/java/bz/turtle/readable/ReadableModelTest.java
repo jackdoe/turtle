@@ -111,4 +111,24 @@ public class ReadableModelTest {
 
     assertNotEquals(mHashAll.hashOf(100, "42"), m.hashOf(100, "42"));
   }
+
+  @Test
+  public void testClip() throws Exception{
+    File tdir = new File(this.getClass().getClassLoader().getResource("testclip").getFile());
+    ReadableModel m = new ReadableModel(tdir);
+    assertEquals(
+        m.predict(
+                new Doc(
+                    new Namespace(
+                        "",
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"))))[0],
+        2,
+        0.01);
+
+  }
 }

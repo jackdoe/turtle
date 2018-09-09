@@ -1,0 +1,14 @@
+Version 8.2.1
+Id
+Min label:0
+Max label:2
+bits:18
+lda:0
+0 ngram:
+0 skip:
+options:
+Checksum: 3083749202
+:0
+27683:0.297391
+116060:0.491228
+183220:0.299104
