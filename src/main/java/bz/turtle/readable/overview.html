@@ -20,7 +20,7 @@ Example:
     public class Main {
         public static void main(String[] args) throws Exception {
             ReadableModel m = new ReadableModel(new File("/tmp/readable_model.txt"));
-            float[] p = m.predict(new Doc(new Namespace("ns", new Feature("a"), new Feature("c",3)));
+            float[] p = m.predict(new PredictionRequest(new Namespace("ns", new Feature("a"), new Feature("c",3)));
             System.out.println(Arrays.toString(p));
         }
     }

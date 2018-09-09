@@ -1,6 +1,6 @@
 package bz.turtle.readable;
 
-import bz.turtle.readable.input.Doc;
+import bz.turtle.readable.input.PredictionRequest;
 import bz.turtle.readable.input.Feature;
 import bz.turtle.readable.input.Namespace;
 
@@ -31,7 +31,7 @@ import java.util.function.UnaryOperator;
  *
  *
  * ReadableModel m = new ReadableModel(new File("/tmp/readable_model.txt"));
- * float[] p = m.predict(new Doc(new Namespace("ns", new Feature("a"), new Feature("c",3)));
+ * float[] p = m.predict(new PredictionRequest(new Namespace("ns", new Feature("a"), new Feature("c",3)));
  * System.out.println(Arrays.toString(p));
  *
  * </pre>
@@ -330,15 +330,15 @@ public class ReadableModel {
 
       while ((testLine = brTest.readLine()) != null && ((predLine = brPred.readLine()) != null)) {
         String[] test = testLine.split("\\s+");
-        Doc doc = new Doc();
-        doc.probabilities = probabilities;
+        PredictionRequest predictionRequest = new PredictionRequest();
+        predictionRequest.probabilities = probabilities;
         boolean hasNamespace = false;
         for (int i = 0; i < test.length; i++) {
           // label |ns f:value f f f \ns
           if (test[i].startsWith("|")) {
             hasNamespace = true;
             String ns = test[i].replaceFirst("\\|", "");
-            doc.namespaces.add(new Namespace(ns));
+            predictionRequest.namespaces.add(new Namespace(ns));
           } else if (hasNamespace) {
 
             float weight = 1;
@@ -349,13 +349,13 @@ public class ReadableModel {
               weight = Float.parseFloat(s[1]);
             }
 
-            doc.namespaces
-                .get(doc.namespaces.size() - 1)
+            predictionRequest.namespaces
+                .get(predictionRequest.namespaces.size() - 1)
                 .features
                 .add(new Feature(feature, weight));
           }
         }
-        float[] ourPrediction = predict(doc);
+        float[] ourPrediction = predict(predictionRequest);
 
         // ran with --probabilities for -oaa
         if (predLine.contains(":")) {
@@ -432,7 +432,7 @@ public class ReadableModel {
    * @param input Document to evaluate
    * @return prediction per class
    */
-  public float[] predict(Doc input) {
+  public float[] predict(PredictionRequest input) {
     if (DEBUG) {
       System.out.println("-----------");
     }

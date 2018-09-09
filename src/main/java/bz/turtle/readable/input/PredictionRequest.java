@@ -10,7 +10,7 @@ import java.util.List;
  *
  * <pre>
  *      model.predict(
- *                 new Doc(
+ *                 new PredictionRequest(
  *                     new Namespace(
  *                         "a",
  *                         new Feature("x"),
@@ -19,17 +19,17 @@ import java.util.List;
  *
  * </pre>
  */
-public class Doc implements Serializable {
+public class PredictionRequest implements Serializable {
   public List<Namespace> namespaces;
 
   /** request output to be with normalized probabilities */
   public boolean probabilities = false;
 
-  public Doc() {
+  public PredictionRequest() {
     namespaces = new ArrayList<>();
   }
 
-  public Doc(Namespace... nss) {
+  public PredictionRequest(Namespace... nss) {
     this.namespaces = Arrays.asList(nss);
   }
 }

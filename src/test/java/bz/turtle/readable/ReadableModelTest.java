@@ -1,6 +1,6 @@
 package bz.turtle.readable;
 
-import bz.turtle.readable.input.Doc;
+import bz.turtle.readable.input.PredictionRequest;
 import bz.turtle.readable.input.Feature;
 import bz.turtle.readable.input.Namespace;
 import org.junit.Test;
@@ -18,7 +18,7 @@ public class ReadableModelTest {
     ReadableModel m = new ReadableModel(tdir);
     assertEquals(
         m.predict(
-                new Doc(
+                new PredictionRequest(
                     new Namespace(
                         "f",
                         new Feature("a"),
@@ -35,7 +35,7 @@ public class ReadableModelTest {
     ReadableModel m = new ReadableModel(tdir);
     assertEquals(
         m.predict(
-                new Doc(
+                new PredictionRequest(
                     new Namespace(
                         "f",
                         new Feature("a"),
@@ -53,7 +53,7 @@ public class ReadableModelTest {
     // echo "1 |a x z |b x1 z1" | vw -t -i model.bin
     assertEquals(
         m.predict(
-                new Doc(
+                new PredictionRequest(
                     new Namespace("a", new Feature("x"), new Feature("z")),
                     new Namespace("b", new Feature("x1"), new Feature("z1"))))[0],
         -0.0657,
@@ -78,7 +78,7 @@ public class ReadableModelTest {
     // echo "1 |a numa:2 cat1 cat2 |b numb:4 cat3 cat4" | vw -t -i model.bin
     assertEquals(
         m.predict(
-                new Doc(
+                new PredictionRequest(
                     new Namespace(
                         "a",
                         Feature.fromString("numa:2"),
@@ -98,16 +98,16 @@ public class ReadableModelTest {
     File tdir = new File(this.getClass().getClassLoader().getResource("testhashnum").getFile());
     ReadableModel m = new ReadableModel(tdir);
 
-    Doc doc =
-        new Doc(
+    PredictionRequest predictionRequest =
+        new PredictionRequest(
             new Namespace("a", new Feature("42"), new Feature("x")),
             new Namespace("b", new Feature("42"), new Feature("y")));
-    assertEquals(m.predict(doc)[0], 0.281, 0.01);
+    assertEquals(m.predict(predictionRequest)[0], 0.281, 0.01);
 
     ReadableModel mHashAll =
         new ReadableModel(
             new File(this.getClass().getClassLoader().getResource("testhashall").getFile()));
-    assertEquals(mHashAll.predict(doc)[0], m.predict(doc)[0], 0.01);
+    assertEquals(mHashAll.predict(predictionRequest)[0], m.predict(predictionRequest)[0], 0.01);
 
     assertNotEquals(mHashAll.hashOf(100, "42"), m.hashOf(100, "42"));
   }
@@ -118,7 +118,7 @@ public class ReadableModelTest {
     ReadableModel m = new ReadableModel(tdir);
     assertEquals(
         m.predict(
-                new Doc(
+                new PredictionRequest(
                     new Namespace(
                         "",
                         new Feature("pos"),
@@ -133,7 +133,7 @@ public class ReadableModelTest {
 
      assertEquals(
         m.predict(
-                new Doc(
+                new PredictionRequest(
                     new Namespace(
                         "",
                         new Feature("neg"),
@@ -155,7 +155,7 @@ public class ReadableModelTest {
     ReadableModel m = new ReadableModel(tdir);
     assertEquals(
         m.predict(
-                new Doc(
+                new PredictionRequest(
                     new Namespace(
                         "",
                         new Feature("pos"),
@@ -175,7 +175,7 @@ public class ReadableModelTest {
     ReadableModel m = new ReadableModel(tdir);
     assertEquals(
         m.predict(
-                new Doc(
+                new PredictionRequest(
                     new Namespace(
                         "",
                         new Feature("pos"),
@@ -194,7 +194,7 @@ public class ReadableModelTest {
     ReadableModel m = new ReadableModel(tdir);
     assertEquals(
         m.predict(
-                new Doc(
+                new PredictionRequest(
                     new Namespace(
                         "",
                         new Feature("pos"),
@@ -214,7 +214,7 @@ public class ReadableModelTest {
     ReadableModel m = new ReadableModel(tdir, true, true);
     assertEquals(
         m.predict(
-                new Doc(
+                new PredictionRequest(
                     new Namespace(
                         "",
                         new Feature("pos"),
