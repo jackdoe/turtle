@@ -42,6 +42,7 @@ public class ReadableModel {
   private static final int intercept = 11650396;
   private final int FNV_prime = 16777619;
 
+  private boolean hasIntercept = true;
   /**
    * This is the actual model of size 2**bits if you build something with vw -b 18 it will be of
    * size 262144
@@ -197,7 +198,8 @@ public class ReadableModel {
                         break;
                       default:
                         throw new UnsupportedOperationException(
-                            "only --link identity, logistic, glf1,  or poisson are supported " + value);
+                            "only --link identity, logistic, glf1,  or poisson are supported "
+                                + value);
                     }
                   }
 
@@ -273,10 +275,16 @@ public class ReadableModel {
    * <p>If you pass a file it will just load the model
    *
    * @param root file or directory to read from
+   * @param hasIntercept model was built without --nocache option
+   * @param probabilities if file is directory and predictions.txt exist, test there with normalized
+   *     probabilities
    * @throws IOException if reading fails
    * @throws UnsupportedOperationException if the model was built with options we dont support yet
    */
-  public ReadableModel(File root, boolean hasIntercept, boolean probabilities) throws IOException, UnsupportedOperationException {
+  public ReadableModel(File root, boolean hasIntercept, boolean probabilities)
+      throws IOException, UnsupportedOperationException {
+
+    this.hasIntercept = hasIntercept;
     if (root.isDirectory()) {
       File model = Paths.get(root.toString(), "readable_model.txt").toFile();
       File test = Paths.get(root.toString(), "test.txt").toFile();
@@ -284,27 +292,32 @@ public class ReadableModel {
       loadReadableModel(model);
 
       if (test.exists() && predictions.exists()) {
-        makeSureItWorks(test, predictions, hasIntercept, probabilities);
+        makeSureItWorks(test, predictions, probabilities);
       }
     } else {
       loadReadableModel(root);
     }
   }
 
- public ReadableModel(File root) throws IOException, UnsupportedOperationException {
-     this(root, true, false);
- }
+  public ReadableModel(File root, boolean hasIntercept)
+      throws IOException, UnsupportedOperationException {
+    this(root, hasIntercept, false);
+  }
 
+  public ReadableModel(File root) throws IOException, UnsupportedOperationException {
+    this(root, true, false);
+  }
 
   /**
    * read the test file and pred file and try to do the same predictions
    *
    * @param testFile file with one example per line
    * @param predFile file output from vw -t -i model --predictions -r
+   * @param probabilities predictions.txt contains probabilities
    * @throws IOException if file reading fails
    * @throws IllegalStateException if predictions mismatch
    */
-  public void makeSureItWorks(File testFile, File predFile, boolean hasIntercept, boolean probabilities)
+  public void makeSureItWorks(File testFile, File predFile, boolean probabilities)
       throws IOException, IllegalStateException {
     /* to make sure we predict the same values as VW */
 
@@ -319,7 +332,6 @@ public class ReadableModel {
         String[] test = testLine.split("\\s+");
         Doc doc = new Doc();
         doc.probabilities = probabilities;
-        doc.hasIntercept = hasIntercept;
         boolean hasNamespace = false;
         for (int i = 0; i < test.length; i++) {
           // label |ns f:value f f f \ns
@@ -537,7 +549,7 @@ public class ReadableModel {
       }
     }
 
-    if (input.hasIntercept) {
+    if (hasIntercept) {
       for (int klass = 0; klass < oaa; klass++) {
         int bucket = getBucket(intercept, klass);
         if (DEBUG) {
@@ -548,7 +560,7 @@ public class ReadableModel {
       }
     }
 
-    if (input.probabilities){
+    if (input.probabilities) {
       this.clip(out);
       this.link = this.logistic;
       this.link(out);
@@ -576,12 +588,11 @@ public class ReadableModel {
     }
   }
 
-  protected void normalize(float[] out){
+  protected void normalize(float[] out) {
     float sum = 0;
     for (float o : out) sum += o;
     for (int klass = 0; klass < this.oaa; klass++) {
-      out[klass] = out[klass]/sum;
+      out[klass] = out[klass] / sum;
     }
   }
-
 }

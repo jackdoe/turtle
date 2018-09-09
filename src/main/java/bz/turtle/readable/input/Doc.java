@@ -22,11 +22,7 @@ import java.util.List;
 public class Doc implements Serializable {
   public List<Namespace> namespaces;
 
-  /**
-   * there is no information in the model file if --noconstant parameter was used
-   * in case you are using it you <b>not</b> to pass hasIntercept=false
-   * */
-  public boolean hasIntercept = true;
+  /** request output to be with normalized probabilities */
   public boolean probabilities = false;
 
   public Doc() {
