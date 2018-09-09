@@ -53,6 +53,13 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <overview>${project.basedir}/src/main/java/bz/turtle/readable/overview.html</overview>
+                    <doctitle>Turtle Java ${project.version} API Reference</doctitle>
+                    <windowtitle>Turtle Java ${project.version}</windowtitle>
+                    <header>Turtle Java ${project.version} API Reference</header>
+                    <encoding>UTF-8</encoding>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
