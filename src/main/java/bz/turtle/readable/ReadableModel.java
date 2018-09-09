@@ -68,6 +68,8 @@ public class ReadableModel {
 
   private UnaryOperator<Float> identity = UnaryOperator.identity();
   private UnaryOperator<Float> logistic = (o) -> (float) (1. / (1. + Math.exp(-o)));
+  private UnaryOperator<Float> glf1 = (o) -> (float) (2. / (1. + Math.exp(-o)) - 1.);
+  private UnaryOperator<Float> poisson = (o) -> (float) Math.exp(o);
 
   private UnaryOperator<Float> link = this.identity;
 
@@ -187,9 +189,12 @@ public class ReadableModel {
                       case "identity":
                         this.link = this.identity;
                         break;
+                      case "poisson":
+                        this.link = this.poisson;
+                        break;
                       default:
                         throw new UnsupportedOperationException(
-                            "only --link identity or logistic are supported");
+                            "only --link identity, logistic or poisson are supported");
                     }
                   }
 

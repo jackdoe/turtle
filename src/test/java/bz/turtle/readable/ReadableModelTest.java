@@ -167,7 +167,28 @@ public class ReadableModelTest {
                         new Feature("pos"))))[0],
         0.880797,
         0.0001);
+  }
+
+  @Test
+  public void testLinkPoisson() throws Exception{
+    File tdir = new File(this.getClass().getClassLoader().getResource("testlinkpoisson").getFile());
+    ReadableModel m = new ReadableModel(tdir);
+    assertEquals(
+        m.predict(
+                new Doc(
+                    new Namespace(
+                        "",
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"))))[0],
+        7.38905,
+        0.0001);
    }
+
 
 
 }
