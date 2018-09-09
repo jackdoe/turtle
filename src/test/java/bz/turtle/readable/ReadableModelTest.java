@@ -146,6 +146,28 @@ public class ReadableModelTest {
         -2,
         0.01);
 
-
   }
+
+
+  @Test
+  public void testLinkLogistic() throws Exception{
+    File tdir = new File(this.getClass().getClassLoader().getResource("testlinklogistic").getFile());
+    ReadableModel m = new ReadableModel(tdir);
+    assertEquals(
+        m.predict(
+                new Doc(
+                    new Namespace(
+                        "",
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"))))[0],
+        0.880797,
+        0.0001);
+   }
+
+
 }

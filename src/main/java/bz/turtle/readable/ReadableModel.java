@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.UnaryOperator;
+import java.util.function.Function;
 
 /**
  * Reades Vowpal Wabbit --readable_model file and creates a weights array containing the weight per
@@ -61,6 +63,15 @@ public class ReadableModel {
   // -q ac
   private Map<Character, Set<Character>> quadratic = new HashMap<>();
   private boolean quadraticAnyToAny = false;
+
+
+  private UnaryOperator<Float> identity = UnaryOperator.identity();
+  private UnaryOperator<Float> logistic = (o) -> (float)(1./(1.+Math.exp(-o)));
+
+
+
+
+  private UnaryOperator<Float> link = this.identity;
 
   // XXX: incomplete
   private void extractOptions(String o, BiConsumer<String, String> cb) {
@@ -137,6 +148,14 @@ public class ReadableModel {
                     while (ml > 0) {
                       multiClassBits++;
                       ml >>= 1;
+                    }
+                  }
+
+                  if (key.equals("--link")){
+                    if (value.equals("logistic")){
+                      this.link = this.logistic;
+                    }else if (value.equals("identity")){
+                      this.link = this.identity;
                     }
                   }
 
@@ -472,12 +491,13 @@ public class ReadableModel {
       }
     }
 
-    // TODO: clip if requested as per https://github.com/jackdoe/turtle/issues/1
-    return clip(out);
+    this.clip(out);
+    this.link(out);
+    return out;
   }
 
   protected float[] clip(float[] raw_out){
-    for (int klass = 0; klass < oaa; klass++){
+    for (int klass = 0; klass < this.oaa; klass++){
       raw_out[klass] = clip(raw_out[klass]);
     }
     return raw_out;
@@ -486,4 +506,12 @@ public class ReadableModel {
   protected float clip(float raw_out){
      return Math.max(Math.min(raw_out, this.maxLabel), this.minLabel);
   }
+
+  protected float[] link(float[] out){
+    for (int klass = 0; klass < this.oaa; klass++){
+      out[klass] = this.link.apply(out[klass]);
+    }
+    return out;
+  }
+
 }
