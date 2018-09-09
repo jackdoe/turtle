@@ -42,15 +42,10 @@ public class ReadableModel {
   private static final int intercept = 11650396;
   private final int FNV_prime = 16777619;
 
-  /**
-   *
-   * average prediction value per second in the last 60 seconds
-   * */
+  /** <b>thread unsafe</b> average prediction value per second in the last 60 seconds */
   public History predictionHistory = new History("average_prediction");
 
-  /**
-   * amount of missing features requested per second in the last 60 seconds
-   * */
+  /** <b>thread unsafe</b> amount of missing features requested per second in the last 60 seconds */
   public History missingFeatureHistory = new History("missing_history");
 
   private boolean hasIntercept = true;
