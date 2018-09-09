@@ -2,9 +2,20 @@ package bz.turtle.readable.input;
 
 import java.io.Serializable;
 
+/**
+ *
+ * */
 public class Feature implements Serializable {
+  /**
+   * feature name
+   * */
   public String name;
+
+  /**
+   *  feature value
+   * */
   public float value = 1f;
+
   public transient int _computed_hash;
 
   public static Feature fromString(String featureString) {

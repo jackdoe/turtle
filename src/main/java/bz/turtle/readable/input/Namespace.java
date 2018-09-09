@@ -5,6 +5,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * vowpal wabbit namespace check out https://github.com/JohnLangford/vowpal_wabbit/wiki/Input-format
+ * for more info
+ */
 public class Namespace implements Serializable {
   public String namespace;
   public List<Feature> features;

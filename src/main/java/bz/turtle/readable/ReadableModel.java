@@ -12,9 +12,29 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
 
+/**
+ * Reades Vowpal Wabbit --readable_model file and creates a weights array containing the weight per
+ * bucket then using same hashing of vw finds the correct bucket for the input features and computes
+ * the inner product.
+ *
+ * <p>check out https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af and
+ * https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction for more
+ * information
+ *
+ * <p>Example:
+ *
+ * <pre>
+ * execute: echo "1 |ns a b c:4" | vw --readable_model /tmp/readable_model.txt
+ *
+ *
+ *
+ * ReadableModel m = new ReadableModel(new File("/tmp/readable_model.txt"));
+ * float[] p = m.predict(new Doc(new Namespace("ns", new Feature("a"), new Feature("c",3)));
+ * System.out.println(Arrays.toString(p));
+ *
+ * </pre>
+ */
 public class ReadableModel {
-  // https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af
-  // https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction
 
   private static final boolean DEBUG = false;
   private static final int intercept = 11650396;
@@ -177,6 +197,14 @@ public class ReadableModel {
   /**
    * @param root file or directory to read from
    * @throws IOException if reading fails
+   *     <p>If you pass a directory as input it will look for 3 files
+   *     <ul>
+   *       <li>readable_model.txt
+   *       <li>test.txt
+   *       <li>predictions.txt
+   *     </ul>
+   *     if test.txt and predictions.txt exists it will automatically run makeSureItWorks()
+   *     <p>If you pass a file it will just load the model
    */
   public ReadableModel(File root) throws IOException {
     if (root.isDirectory()) {
@@ -197,6 +225,8 @@ public class ReadableModel {
    * @param testFile file with one example per line
    * @param predFile file output from vw -t -i model --predictions -r
    * @throws IOException if file reading fails
+   *     <p>This function reads the test file and the predictio file and compares if it can make the
+   *     same predictions as vw line for line
    */
   public void makeSureItWorks(File testFile, File predFile) throws IOException {
     /* to make sure we predict the same values as VW */
@@ -285,16 +315,23 @@ public class ReadableModel {
     return ((featureHash << multiClassBits) | klass) & mask;
   }
 
-  // https://github.com/JohnLangford/vowpal_wabbit/blob/579c34d2d2fd151b419bea54d9921fc7f3f55bbc/vowpalwabbit/parse_primitives.cc#L48
-  protected int hashOf(int nsHash, String f) {
+  /**
+   * @param mmNamespaceHash the namespace hash VWMurmur.hash(namespace, seed) where seed is usually
+   *     0 unless you pass --hash_seed to vw
+   * @param featureName the feature name
+   * @return the hash of the feature according to vw
+   *     <p>check out
+   *     https://github.com/JohnLangford/vowpal_wabbit/blob/579c34d2d2fd151b419bea54d9921fc7f3f55bbc/vowpalwabbit/parse_primitives.cc#L48
+   */
+  public int hashOf(int mmNamespaceHash, String featureName) {
     int featureHash = 0;
     if (hashAll) {
-      featureHash = VWMurmur.hash(f, nsHash);
+      featureHash = VWMurmur.hash(featureName, mmNamespaceHash);
     } else {
       try {
-        featureHash = Integer.parseInt(f) + nsHash;
+        featureHash = Integer.parseInt(featureName) + mmNamespaceHash;
       } catch (NumberFormatException ex) {
-        featureHash = VWMurmur.hash(f, nsHash);
+        featureHash = VWMurmur.hash(featureName, mmNamespaceHash);
       }
     }
     return featureHash;
