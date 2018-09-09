@@ -192,9 +192,12 @@ public class ReadableModel {
                       case "poisson":
                         this.link = this.poisson;
                         break;
+                      case "glf1":
+                        this.link = this.glf1;
+                        break;
                       default:
                         throw new UnsupportedOperationException(
-                            "only --link identity, logistic or poisson are supported");
+                            "only --link identity, logistic, glf1,  or poisson are supported " + value);
                     }
                   }
 
