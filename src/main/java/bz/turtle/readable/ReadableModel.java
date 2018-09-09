@@ -12,16 +12,16 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.UnaryOperator;
-import java.util.function.Function;
 
 /**
  * Reades Vowpal Wabbit --readable_model file and creates a weights array containing the weight per
  * bucket then using same hashing of vw finds the correct bucket for the input features and computes
  * the inner product.
  *
- * <p>check out https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af and
- * https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction for more
- * information
+ * <p>check out this <a
+ * href="https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af">gist</a> and <a
+ * href="https://github.com/JohnLangford/vowpal_wabbit/wiki/Feature-Hashing-and-Extraction">Feature-Hashing-and-Extraction</a>
+ * for more information
  *
  * <p>Example:
  *
@@ -59,25 +59,22 @@ public class ReadableModel {
   private float minLabel = 0;
   private float maxLabel = 0;
 
+  private int ngram = 0;
+  private int skip = 0;
   // -q ab
   // -q ac
   private Map<Character, Set<Character>> quadratic = new HashMap<>();
   private boolean quadraticAnyToAny = false;
 
-
   private UnaryOperator<Float> identity = UnaryOperator.identity();
-  private UnaryOperator<Float> logistic = (o) -> (float)(1./(1.+Math.exp(-o)));
-
-
-
+  private UnaryOperator<Float> logistic = (o) -> (float) (1. / (1. + Math.exp(-o)));
 
   private UnaryOperator<Float> link = this.identity;
 
   // XXX: incomplete
   private void extractOptions(String o, BiConsumer<String, String> cb) {
     o = o.trim();
-    if (o.isEmpty())
-      return;
+    if (o.isEmpty()) return;
     String[] op = o.split("\\s+");
     for (int i = 0; i < op.length; i += 2) {
       cb.accept(op[i], op[i + 1]);
@@ -85,13 +82,24 @@ public class ReadableModel {
   }
 
   private String getSecondValue(String s) {
-    return s.split(":")[1];
+    String[] splitted = s.split(":");
+    if (splitted.length == 1) {
+      return "";
+    }
+    return splitted[1].trim();
+  }
+
+  private int intOrZero(String s) {
+    if (s.equals("")) {
+      return 0;
+    }
+    return Integer.parseInt(s);
   }
   /**
-   * @param file the vw --readable_model file.txt
-   * @throws IOException if file reading fails
-   *     <p>The contents of the file looks like this
-   *     <pre>
+   * Loads the model from a file output from vw --readable_file. The contents of the file looks like
+   * this:
+   *
+   * <pre>
    *   Version 8.6.1
    *   Id
    *   Min label:0
@@ -110,10 +118,15 @@ public class ReadableModel {
    *   250698:0.192113
    *   259670:0.343652
    * </pre>
-   *     <b>155256:0.192113</b> is hash bucket:weight, we use the same hashing algorithm as vw to
-   *     find the features in the model
+   *
+   * <b>155256:0.192113</b> is hash bucket:weight, we use the same hashing algorithm as vw to find
+   * the features in the model
+   *
+   * @param file the vw --readable_model file.txt
+   * @throws IOException if there is a problem with the reading
+   * @throws UnsupportedOperationException if the model was built with options we dont support yet
    */
-  public void loadReadableModel(File file) throws IOException {
+  public void loadReadableModel(File file) throws IOException, UnsupportedOperationException {
     bits = 0;
     boolean inHeader = true;
     multiClassBits = 0;
@@ -136,6 +149,19 @@ public class ReadableModel {
           if (line.contains("Max label")) {
             maxLabel = Float.parseFloat(getSecondValue(line));
           }
+          if (line.contains("ngram")) {
+            ngram = intOrZero(getSecondValue(line));
+            if (ngram != 0) {
+              throw new UnsupportedOperationException("ngrams are not supported yet");
+            }
+          }
+          if (line.contains("skip")) {
+            skip = intOrZero(getSecondValue(line));
+            if (skip != 0) {
+              throw new UnsupportedOperationException("skip is not supported yet");
+            }
+          }
+
           if (line.contains("options")) {
             extractOptions(
                 line.split(":", 2)[1],
@@ -150,12 +176,17 @@ public class ReadableModel {
                       ml >>= 1;
                     }
                   }
-
-                  if (key.equals("--link")){
-                    if (value.equals("logistic")){
+                  if (key.equals("--cubic")) {
+                    throw new UnsupportedOperationException("we do not support --cubic yet");
+                  }
+                  if (key.equals("--link")) {
+                    if (value.equals("logistic")) {
                       this.link = this.logistic;
-                    }else if (value.equals("identity")){
+                    } else if (value.equals("identity")) {
                       this.link = this.identity;
+                    } else {
+                      throw new UnsupportedOperationException(
+                          "only --link identity or logistic are supported");
                     }
                   }
 
@@ -216,18 +247,25 @@ public class ReadableModel {
   }
 
   /**
+   * Takes a file or directory and loads the model.
+   *
+   * <p>If you pass a directory as input it will look for 3 files
+   *
+   * <ul>
+   *   <li>readable_model.txt
+   *   <li>test.txt
+   *   <li>predictions.txt
+   * </ul>
+   *
+   * If test.txt and predictions.txt exists it will automatically run makeSureItWorks()
+   *
+   * <p>If you pass a file it will just load the model
+   *
    * @param root file or directory to read from
    * @throws IOException if reading fails
-   *     <p>If you pass a directory as input it will look for 3 files
-   *     <ul>
-   *       <li>readable_model.txt
-   *       <li>test.txt
-   *       <li>predictions.txt
-   *     </ul>
-   *     if test.txt and predictions.txt exists it will automatically run makeSureItWorks()
-   *     <p>If you pass a file it will just load the model
+   * @throws UnsupportedOperationException if the model was built with options we dont support yet
    */
-  public ReadableModel(File root) throws IOException {
+  public ReadableModel(File root) throws IOException, UnsupportedOperationException {
     if (root.isDirectory()) {
       File model = Paths.get(root.toString(), "readable_model.txt").toFile();
       File test = Paths.get(root.toString(), "test.txt").toFile();
@@ -243,13 +281,15 @@ public class ReadableModel {
   }
 
   /**
+   * read the test file and pred file and try to do the same predictions
+   *
    * @param testFile file with one example per line
    * @param predFile file output from vw -t -i model --predictions -r
    * @throws IOException if file reading fails
-   *     <p>This function reads the test file and the predictio file and compares if it can make the
-   *     same predictions as vw line for line
+   * @throws IllegalStateException if predictions mismatch
    */
-  public void makeSureItWorks(File testFile, File predFile) throws IOException {
+  public void makeSureItWorks(File testFile, File predFile)
+      throws IOException, IllegalStateException {
     /* to make sure we predict the same values as VW */
 
     BufferedReader brTest = new BufferedReader(new FileReader(testFile));
@@ -496,22 +536,21 @@ public class ReadableModel {
     return out;
   }
 
-  protected float[] clip(float[] raw_out){
-    for (int klass = 0; klass < this.oaa; klass++){
+  protected float[] clip(float[] raw_out) {
+    for (int klass = 0; klass < this.oaa; klass++) {
       raw_out[klass] = clip(raw_out[klass]);
     }
     return raw_out;
   }
 
-  protected float clip(float raw_out){
-     return Math.max(Math.min(raw_out, this.maxLabel), this.minLabel);
+  protected float clip(float raw_out) {
+    return Math.max(Math.min(raw_out, this.maxLabel), this.minLabel);
   }
 
-  protected float[] link(float[] out){
-    for (int klass = 0; klass < this.oaa; klass++){
+  protected float[] link(float[] out) {
+    for (int klass = 0; klass < this.oaa; klass++) {
       out[klass] = this.link.apply(out[klass]);
     }
     return out;
   }
-
 }
