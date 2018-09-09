@@ -126,9 +126,26 @@ public class ReadableModelTest {
                         new Feature("pos"),
                         new Feature("pos"),
                         new Feature("pos"),
+                        new Feature("pos"),
                         new Feature("pos"))))[0],
         2,
         0.01);
+
+     assertEquals(
+        m.predict(
+                new Doc(
+                    new Namespace(
+                        "",
+                        new Feature("neg"),
+                        new Feature("neg"),
+                        new Feature("neg"),
+                        new Feature("neg"),
+                        new Feature("neg"),
+                        new Feature("neg"),
+                        new Feature("neg"))))[0],
+        -2,
+        0.01);
+
 
   }
 }
