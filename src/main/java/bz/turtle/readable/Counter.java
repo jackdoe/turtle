@@ -3,16 +3,13 @@ package bz.turtle.readable;
 public class Counter {
   public float sum = 0;
   public int count = 0;
-  public int second = 0;
 
   @Override
   public String toString() {
-    return String.format("%d@%f/%d=%f", second, sum, count, get());
+    return String.format("%f/%d=%f", sum, count, get());
   }
 
-  public void add(int s, float f) {
-    if (s != second) clear();
-    second = s;
+  public void add(float f) {
     sum += f;
     count++;
   }

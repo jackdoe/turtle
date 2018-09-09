@@ -1,8 +1,6 @@
 package bz.turtle.readable;
 
 public class History {
-  public Counter[] perSecond;
-  public String tag;
   public static int now = 0;
   static Thread timer;
 
@@ -22,6 +20,10 @@ public class History {
     timer.start();
   }
 
+  public Counter[] perSecond;
+  public String tag;
+  int second;
+
   public History(String tag) {
     this.tag = tag;
     perSecond = new Counter[60];
@@ -30,7 +32,11 @@ public class History {
 
   public void add(float f) {
     int bucket = now % 60;
-    perSecond[bucket].add(now, f);
+    if (now != second) {
+      perSecond[bucket].clear();
+      now = second;
+    }
+    perSecond[bucket].add(f);
   }
 
   @Override
