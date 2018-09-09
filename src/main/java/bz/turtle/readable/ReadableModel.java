@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.UnaryOperator;
+import java.util.function.DoubleUnaryOperator;
 
 /**
  * Reades Vowpal Wabbit --readable_model file and creates a weights array containing the weight per
@@ -73,12 +73,12 @@ public class ReadableModel {
   private Map<Character, Set<Character>> quadratic = new HashMap<>();
   private boolean quadraticAnyToAny = false;
 
-  private UnaryOperator<Float> identity = UnaryOperator.identity();
-  private UnaryOperator<Float> logistic = (o) -> (float) (1. / (1. + Math.exp(-o)));
-  private UnaryOperator<Float> glf1 = (o) -> (float) (2. / (1. + Math.exp(-o)) - 1.);
-  private UnaryOperator<Float> poisson = (o) -> (float) Math.exp(o);
+  private DoubleUnaryOperator identity = DoubleUnaryOperator.identity();
+  private DoubleUnaryOperator logistic = (o) -> (1. / (1. + Math.exp(-o)));
+  private DoubleUnaryOperator glf1 = (o) -> (2. / (1. + Math.exp(-o)) - 1.);
+  private DoubleUnaryOperator poisson = (o) -> Math.exp(o);
 
-  private UnaryOperator<Float> link = this.identity;
+  private DoubleUnaryOperator link = this.identity;
 
   // XXX: incomplete
   private void extractOptions(String o, BiConsumer<String, String> cb) {
@@ -600,7 +600,7 @@ public class ReadableModel {
 
   protected void link(float[] out) {
     for (int klass = 0; klass < this.oaa; klass++) {
-      out[klass] = this.link.apply(out[klass]);
+      out[klass] = (float) this.link.applyAsDouble(out[klass]);
     }
   }
 
