@@ -13,7 +13,10 @@ public class Feature implements Serializable {
   /** feature value */
   public float value = 1f;
 
+  /** used so we dont recompute the hash value of the feature*/
   public transient int computedHashValue;
+
+  /** used so we dont recompute the hash value of the feature*/
   public transient boolean hashIsComputed = false;
 
   public static Feature fromString(String featureString) {
