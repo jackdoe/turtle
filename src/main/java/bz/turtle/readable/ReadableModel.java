@@ -4,14 +4,12 @@ import bz.turtle.readable.input.Feature;
 import bz.turtle.readable.input.Namespace;
 import bz.turtle.readable.input.PredictionRequest;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.DoubleUnaryOperator;
+import java.util.zip.GZIPInputStream;
 
 /**
  * Reades Vowpal Wabbit --readable_model file and creates a weights array containing the weight per
@@ -98,6 +96,28 @@ public class ReadableModel {
     }
     return Integer.parseInt(s);
   }
+
+  private BufferedReader getReaderForExt(File f) throws IOException {
+    BufferedReader out = null;
+    if (f.toString().endsWith(".gz")) {
+      FileInputStream fin = new FileInputStream(f);
+      InputStream gzipStream = new GZIPInputStream(fin);
+      Reader decoder = new InputStreamReader(gzipStream);
+      out = new BufferedReader(decoder);
+    } else {
+      out = new BufferedReader(new FileReader(f));
+    }
+
+    return out;
+  }
+
+  private File findFileWithExt(File root, String name) {
+    File x = Paths.get(root.toString(), name + ".gz").toFile();
+    if (x.exists()) {
+      return x;
+    }
+    return Paths.get(root.toString(), name).toFile();
+  }
   /**
    * Loads the model from a file output from vw --readable_file. The contents of the file looks like
    * this:
@@ -125,7 +145,8 @@ public class ReadableModel {
    * <b>155256:0.192113</b> is hash bucket:weight, we use the same hashing algorithm as vw to find
    * the features in the model
    *
-   * @param file the vw --readable_model file.txt
+   * @param file the vw --readable_model file.txt, also supports .gz and will automatically
+   *     decompress
    * @throws IOException if there is a problem with the reading
    * @throws UnsupportedOperationException if the model was built with options we dont support yet
    */
@@ -133,7 +154,7 @@ public class ReadableModel {
     bits = 0;
     boolean inHeader = true;
     multiClassBits = 0;
-    BufferedReader br = new BufferedReader(new FileReader(file));
+    BufferedReader br = getReaderForExt(file);
     // TODO: more robust parsing
     try {
       String line;
@@ -270,7 +291,8 @@ public class ReadableModel {
    *   <li>predictions.txt
    * </ul>
    *
-   * If test.txt and predictions.txt exists it will automatically run makeSureItWorks()
+   * If test.txt and predictions.txt exists it will automatically run makeSureItWorks() (or
+   * test.txt.gz, predictions.txt.gz readable_model.txt.gz)
    *
    * <p>If you pass a file it will just load the model
    *
@@ -286,9 +308,9 @@ public class ReadableModel {
 
     this.hasIntercept = hasIntercept;
     if (root.isDirectory()) {
-      File model = Paths.get(root.toString(), "readable_model.txt").toFile();
-      File test = Paths.get(root.toString(), "test.txt").toFile();
-      File predictions = Paths.get(root.toString(), "predictions.txt").toFile();
+      File model = findFileWithExt(root, "readable_model.txt");
+      File test = findFileWithExt(root, "test.txt");
+      File predictions = findFileWithExt(root, "predictions.txt");
       loadReadableModel(model);
 
       if (test.exists() && predictions.exists()) {
@@ -321,8 +343,8 @@ public class ReadableModel {
       throws IOException, IllegalStateException {
     /* to make sure we predict the same values as VW */
 
-    BufferedReader brTest = new BufferedReader(new FileReader(testFile));
-    BufferedReader brPred = new BufferedReader(new FileReader(predFile));
+    BufferedReader brTest = getReaderForExt(testFile);
+    BufferedReader brPred = getReaderForExt(predFile);
     int lineNum = 0;
     try {
       String testLine;

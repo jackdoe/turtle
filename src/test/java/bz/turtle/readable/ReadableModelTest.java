@@ -6,6 +6,7 @@ import bz.turtle.readable.input.PredictionRequest;
 import org.junit.Test;
 
 import java.io.File;
+import java.nio.file.Paths;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -16,6 +17,30 @@ public class ReadableModelTest {
   public void predictBasic() throws Exception {
     File tdir = new File(this.getClass().getClassLoader().getResource("test").getFile());
     ReadableModel m = new ReadableModel(tdir);
+    assertEquals(
+        m.predict(
+                new PredictionRequest(
+                    new Namespace(
+                        "f",
+                        new Feature("a"),
+                        new Feature("b"),
+                        new Feature("c"),
+                        new Feature("odd=-1"))))[0],
+        -1,
+        0.01);
+  }
+
+  @Test
+  public void predictGzip() throws Exception {
+    ClassLoader cl = this.getClass().getClassLoader();
+    File tdir = new File(cl.getResource("testgz").getFile());
+    ReadableModel m = new ReadableModel(tdir);
+
+    m.makeSureItWorks(
+        Paths.get(tdir.toString(), "test.txt.gz").toFile(),
+        Paths.get(tdir.toString(), "predictions.txt.gz").toFile(),
+        false);
+
     assertEquals(
         m.predict(
                 new PredictionRequest(
