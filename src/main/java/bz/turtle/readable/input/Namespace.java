@@ -8,11 +8,16 @@ import java.util.List;
 /**
  * vowpal wabbit namespace check out https://github.com/JohnLangford/vowpal_wabbit/wiki/Input-format
  * for more info
+ *
+ * <p>We compute the hash value only once do not reuse between models because the hash is dependent
+ * on the model seed
  */
 public class Namespace implements Serializable {
   public String namespace;
   public List<Feature> features;
-  public transient int _computed_hash;
+
+  public transient int computedHashValue;
+  public transient boolean hashIsComputed = false;
 
   public Namespace() {
     this("");

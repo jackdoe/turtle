@@ -109,7 +109,7 @@ public class ReadableModelTest {
             new File(this.getClass().getClassLoader().getResource("testhashall").getFile()));
     assertEquals(mHashAll.predict(predictionRequest)[0], m.predict(predictionRequest)[0], 0.01);
 
-    assertNotEquals(mHashAll.hashOf(100, "42"), m.hashOf(100, "42"));
+    assertNotEquals(mHashAll.featureHashOf(100, "42"), m.featureHashOf(100, "42"));
   }
 
   @Test

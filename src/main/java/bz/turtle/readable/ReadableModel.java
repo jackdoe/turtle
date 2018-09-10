@@ -415,7 +415,7 @@ public class ReadableModel {
    *     <p>check out
    *     https://github.com/JohnLangford/vowpal_wabbit/blob/579c34d2d2fd151b419bea54d9921fc7f3f55bbc/vowpalwabbit/parse_primitives.cc#L48
    */
-  public int hashOf(int mmNamespaceHash, String featureName) {
+  public int featureHashOf(int mmNamespaceHash, String featureName) {
     int featureHash;
     if (hashAll) {
       featureHash = VWMurmur.hash(featureName, mmNamespaceHash);
@@ -453,14 +453,21 @@ public class ReadableModel {
 
     input.namespaces.forEach(
         n -> {
-          int namespaceHash = n.namespace.length() == 0 ? 0 : VWMurmur.hash(n.namespace, seed);
-          n._computed_hash = namespaceHash;
+          if (!n.hashIsComputed) {
+            int namespaceHash = n.namespace.length() == 0 ? 0 : VWMurmur.hash(n.namespace, seed);
+            n.computedHashValue = namespaceHash;
+            n.hashIsComputed = true;
+          }
+
           n.features.forEach(
               f -> {
-                int featureHash = hashOf(namespaceHash, f.name);
-                f._computed_hash = featureHash;
+                if (!f.hashIsComputed) {
+                  int featureHash = featureHashOf(n.computedHashValue, f.name);
+                  f.computedHashValue = featureHash;
+                  f.hashIsComputed = true;
+                }
                 for (int klass = 0; klass < oaa; klass++) {
-                  int bucket = getBucket(featureHash, klass);
+                  int bucket = getBucket(f.computedHashValue, klass);
                   if (DEBUG) {
                     System.out.println(
                         String.format(
@@ -484,7 +491,7 @@ public class ReadableModel {
       //    foreach interacting namespaces nsB
       //       foreach nsA.features a
       //         foreach nsB.feature b
-      //            bucket = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
+      //            bucket = ((a.computedHashValue * FNV_prime) ^ b.computedHashValue);
 
       if (quadraticAnyToAny) {
         input.namespaces.forEach(
@@ -495,7 +502,8 @@ public class ReadableModel {
                           a -> {
                             bns.features.forEach(
                                 b -> {
-                                  int fnv = ((a._computed_hash * FNV_prime) ^ b._computed_hash);
+                                  int fnv =
+                                      ((a.computedHashValue * FNV_prime) ^ b.computedHashValue);
                                   for (int klass = 0; klass < oaa; klass++) {
                                     int bucket = getBucket(fnv, klass);
 
@@ -547,7 +555,8 @@ public class ReadableModel {
                                   bns.features.forEach(
                                       b -> {
                                         int fnv =
-                                            ((a._computed_hash * FNV_prime) ^ b._computed_hash);
+                                            ((a.computedHashValue * FNV_prime)
+                                                ^ b.computedHashValue);
                                         for (int klass = 0; klass < oaa; klass++) {
                                           int bucket = getBucket(fnv, klass);
                                           // TODO: check how is that computed for numerical features

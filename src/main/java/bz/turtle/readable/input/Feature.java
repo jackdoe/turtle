@@ -3,20 +3,18 @@ package bz.turtle.readable.input;
 import java.io.Serializable;
 
 /**
- *
+ * We compute the hash value only once
+ * do not reuse between namespaces because the hash is dependent on the namespace hash
  * */
 public class Feature implements Serializable {
-  /**
-   * feature name
-   * */
+  /** feature name */
   public String name;
 
-  /**
-   *  feature value
-   * */
+  /** feature value */
   public float value = 1f;
 
-  public transient int _computed_hash;
+  public transient int computedHashValue;
+  public transient boolean hashIsComputed = false;
 
   public static Feature fromString(String featureString) {
     String[] parts = featureString.split(":");
