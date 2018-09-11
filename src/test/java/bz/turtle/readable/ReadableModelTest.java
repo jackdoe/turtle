@@ -86,6 +86,20 @@ public class ReadableModelTest {
   }
 
   @Test
+  public void testReusableNamespace() throws Exception {
+    ReadableModel m = new ReadableModel(this.getClass().getClassLoader().getResource("testq"));
+
+    Namespace a = new Namespace("a", new Feature("x"));
+    assertEquals(m.predict(new PredictionRequest(a))[0], -0.0843, 0.01);
+
+    a.rename("b");
+    assertEquals(m.predict(new PredictionRequest(a))[0], -0.0421, 0.01);
+
+    a.rename("a");
+    assertEquals(m.predict(new PredictionRequest(a))[0], -0.0843, 0.01);
+  }
+
+  @Test
   public void testErrorPileup() throws Exception {
     File tdir =
         new File(this.getClass().getClassLoader().getResource("test_error_pileup").getFile());

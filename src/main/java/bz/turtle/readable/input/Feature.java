@@ -3,9 +3,9 @@ package bz.turtle.readable.input;
 import java.io.Serializable;
 
 /**
- * We compute the hash value only once
- * do not reuse between namespaces because the hash is dependent on the namespace hash
- * */
+ * We compute the hash value only once do not reuse between namespaces because the hash is dependent
+ * on the namespace hash
+ */
 public class Feature implements Serializable {
   /** feature name */
   public String name;
@@ -13,10 +13,10 @@ public class Feature implements Serializable {
   /** feature value */
   public float value = 1f;
 
-  /** used so we dont recompute the hash value of the feature*/
+  /** used so we dont recompute the hash value of the feature */
   public transient int computedHashValue;
 
-  /** used so we dont recompute the hash value of the feature*/
+  /** used so we dont recompute the hash value of the feature */
   public transient boolean hashIsComputed = false;
 
   public static Feature fromString(String featureString) {
@@ -43,5 +43,20 @@ public class Feature implements Serializable {
   public Feature(String n, float v) {
     this.name = n;
     this.value = v;
+  }
+
+  /**
+   * change the feature name, which also resets the computed hash
+   *
+   * @param name - the new feature name
+   */
+  public void rename(String name) {
+    this.name = name;
+    resetComputedHash();
+  }
+
+  public void resetComputedHash() {
+    computedHashValue = 0;
+    hashIsComputed = false;
   }
 }

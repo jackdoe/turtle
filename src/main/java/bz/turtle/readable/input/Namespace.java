@@ -37,4 +37,16 @@ public class Namespace implements Serializable {
     this.namespace = ns;
     this.features = Arrays.asList(features);
   }
+
+  /**
+   * change the namespace name, which also resets the computed hash, and all feature's computed hash
+   *
+   * @param name - the new namespace name
+   */
+  public void rename(String name) {
+    this.namespace = name;
+    computedHashValue = 0;
+    hashIsComputed = false;
+    features.forEach(Feature::resetComputedHash);
+  }
 }

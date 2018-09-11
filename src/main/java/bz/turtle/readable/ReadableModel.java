@@ -5,6 +5,7 @@ import bz.turtle.readable.input.Namespace;
 import bz.turtle.readable.input.PredictionRequest;
 
 import java.io.*;
+import java.net.URL;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
@@ -321,9 +322,18 @@ public class ReadableModel {
     }
   }
 
+  public ReadableModel(URL root, boolean hasIntercept)
+      throws IOException, UnsupportedOperationException {
+    this(new File(root.getFile()), hasIntercept);
+  }
+
   public ReadableModel(File root, boolean hasIntercept)
       throws IOException, UnsupportedOperationException {
     this(root, hasIntercept, false);
+  }
+
+  public ReadableModel(URL root) throws IOException, UnsupportedOperationException {
+    this(new File(root.getFile()), true, false);
   }
 
   public ReadableModel(File root) throws IOException, UnsupportedOperationException {
