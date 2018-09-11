@@ -14,7 +14,7 @@ import java.util.List;
  */
 public class Namespace implements Serializable {
   public String namespace;
-  public List<Feature> features;
+  public List<FeatureInterface> features;
 
   public transient int computedHashValue;
   public transient boolean hashIsComputed = false;
@@ -47,6 +47,6 @@ public class Namespace implements Serializable {
     this.namespace = name;
     computedHashValue = 0;
     hashIsComputed = false;
-    features.forEach(Feature::resetComputedHash);
+    features.forEach(f -> f.resetIsHashComputed());
   }
 }

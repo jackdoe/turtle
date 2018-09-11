@@ -1,6 +1,7 @@
 package bz.turtle.readable;
 
 import bz.turtle.readable.input.Feature;
+import bz.turtle.readable.input.FeatureInterface;
 import bz.turtle.readable.input.Namespace;
 import bz.turtle.readable.input.PredictionRequest;
 
@@ -98,18 +99,14 @@ public class ReadableModel {
     return Integer.parseInt(s);
   }
 
-  private BufferedReader getReaderForExt(File f) throws IOException {
-    BufferedReader out = null;
+  private InputStream getReaderForExt(File f) throws IOException {
     if (f.toString().endsWith(".gz")) {
       FileInputStream fin = new FileInputStream(f);
       InputStream gzipStream = new GZIPInputStream(fin);
-      Reader decoder = new InputStreamReader(gzipStream);
-      out = new BufferedReader(decoder);
+      return gzipStream;
     } else {
-      out = new BufferedReader(new FileReader(f));
+      return new FileInputStream(f);
     }
-
-    return out;
   }
 
   private File findFileWithExt(File root, String name) {
@@ -152,10 +149,15 @@ public class ReadableModel {
    * @throws UnsupportedOperationException if the model was built with options we dont support yet
    */
   public void loadReadableModel(File file) throws IOException, UnsupportedOperationException {
+    InputStream is = getReaderForExt(file);
+    loadReadableModel(is);
+  }
+
+  public void loadReadableModel(InputStream is) throws IOException, UnsupportedOperationException {
+    BufferedReader br = new BufferedReader(new InputStreamReader(is));
     bits = 0;
     boolean inHeader = true;
     multiClassBits = 0;
-    BufferedReader br = getReaderForExt(file);
     // TODO: more robust parsing
     try {
       String line;
@@ -322,6 +324,13 @@ public class ReadableModel {
     }
   }
 
+  public ReadableModel(InputStream is, boolean hasIntercept)
+      throws IOException, UnsupportedOperationException {
+
+    this.hasIntercept = hasIntercept;
+    loadReadableModel(is);
+  }
+
   public ReadableModel(URL root, boolean hasIntercept)
       throws IOException, UnsupportedOperationException {
     this(new File(root.getFile()), hasIntercept);
@@ -353,8 +362,11 @@ public class ReadableModel {
       throws IOException, IllegalStateException {
     /* to make sure we predict the same values as VW */
 
-    BufferedReader brTest = getReaderForExt(testFile);
-    BufferedReader brPred = getReaderForExt(predFile);
+    InputStream isTest = getReaderForExt(testFile);
+    InputStream isPred = getReaderForExt(predFile);
+    BufferedReader brTest = new BufferedReader(new InputStreamReader(isTest));
+    BufferedReader brPred = new BufferedReader(new InputStreamReader(isPred));
+
     int lineNum = 0;
     try {
       String testLine;
@@ -442,23 +454,28 @@ public class ReadableModel {
   /**
    * @param mmNamespaceHash the namespace hash VWMurmur.hash(namespace, seed) where seed is usually
    *     0 unless you pass --hash_seed to vw
-   * @param featureName the feature name
+   * @param feature the feature to compute hash of
    * @return the hash of the feature according to vw
    *     <p>check out
    *     https://github.com/JohnLangford/vowpal_wabbit/blob/579c34d2d2fd151b419bea54d9921fc7f3f55bbc/vowpalwabbit/parse_primitives.cc#L48
    */
-  public int featureHashOf(int mmNamespaceHash, String featureName) {
-    int featureHash;
+  public int featureHashOf(int mmNamespaceHash, FeatureInterface feature) {
     if (hashAll) {
-      featureHash = VWMurmur.hash(featureName, mmNamespaceHash);
+      return VWMurmur.hash(feature.getStringName(), mmNamespaceHash);
     } else {
-      try {
-        featureHash = Integer.parseInt(featureName) + mmNamespaceHash;
-      } catch (NumberFormatException ex) {
-        featureHash = VWMurmur.hash(featureName, mmNamespaceHash);
-      }
+      if (feature.hasIntegerName()) return feature.getIntegerName() + mmNamespaceHash;
+      return VWMurmur.hash(feature.getStringName(), mmNamespaceHash);
     }
-    return featureHash;
+  }
+
+  /**
+   * really usefull if you want to score a list of items and dont want to be in the mercy of escape
+   * analysis
+   *
+   * @return float array with enough elements to hold one prediction per class
+   */
+  public float[] getReusableFloatArray() {
+    return new float[oaa];
   }
 
   /**
@@ -475,11 +492,24 @@ public class ReadableModel {
    * @return prediction per class
    */
   public float[] predict(PredictionRequest input, PredictionStats stats) {
+    float[] out = getReusableFloatArray();
+    predict(out, input, stats);
+    return out;
+  }
+
+  /**
+   * @param result place to put result in (@see getReusableFloatArray)
+   * @param input PredictionRequest to evaluate
+   * @param stats PredictionStats if you want keep track of some basic stats
+   * @return prediction per class
+   */
+  public void predict(float[] result, PredictionRequest input, PredictionStats stats) {
     if (DEBUG) {
       System.out.println("-----------");
     }
 
-    final float[] out = new float[oaa];
+    for (int klass = 0; klass < oaa; klass++) result[klass] = 0;
+
     // TODO: ngrams skips
     // TODO: --cubic hash calculation
 
@@ -493,17 +523,17 @@ public class ReadableModel {
 
           n.features.forEach(
               f -> {
-                if (!f.hashIsComputed) {
-                  int featureHash = featureHashOf(n.computedHashValue, f.name);
-                  f.computedHashValue = featureHash;
-                  f.hashIsComputed = true;
+                if (!f.isHashComputed()) {
+                  int featureHash = featureHashOf(n.computedHashValue, f);
+                  f.setComputedHash(featureHash);
                 }
                 for (int klass = 0; klass < oaa; klass++) {
-                  int bucket = getBucket(f.computedHashValue, klass);
+                  int bucket = getBucket(f.getComputedHash(), klass);
                   if (DEBUG) {
                     System.out.println(
                         String.format(
-                            "%s^%s:%d:1:%f", n.namespace, f.name, bucket, weights[bucket]));
+                            "%s^%s:%d:1:%f",
+                            n.namespace, f.getStringName(), bucket, weights[bucket]));
                   }
 
                   if (stats != null) {
@@ -512,7 +542,7 @@ public class ReadableModel {
                     }
                     stats.featuresLookedUp.add(1);
                   }
-                  out[klass] += f.value * weights[bucket];
+                  result[klass] += f.getValue() * weights[bucket];
                 }
               });
         });
@@ -535,7 +565,7 @@ public class ReadableModel {
                             bns.features.forEach(
                                 b -> {
                                   int fnv =
-                                      ((a.computedHashValue * FNV_prime) ^ b.computedHashValue);
+                                      ((a.getComputedHash() * FNV_prime) ^ b.getComputedHash());
                                   for (int klass = 0; klass < oaa; klass++) {
                                     int bucket = getBucket(fnv, klass);
 
@@ -544,9 +574,9 @@ public class ReadableModel {
                                           String.format(
                                               "%s^%s*%s^%s:%d:1:%f",
                                               ans.namespace,
-                                              a.name,
+                                              a.getStringName(),
                                               bns.namespace,
-                                              b.name,
+                                              b.getStringName(),
                                               bucket,
                                               weights[bucket]));
                                     }
@@ -557,7 +587,7 @@ public class ReadableModel {
                                       stats.featuresLookedUp.add(1);
                                     }
 
-                                    out[klass] += a.value * b.value * weights[bucket];
+                                    result[klass] += a.getValue() * b.getValue() * weights[bucket];
                                   }
                                 });
                           });
@@ -587,8 +617,8 @@ public class ReadableModel {
                                   bns.features.forEach(
                                       b -> {
                                         int fnv =
-                                            ((a.computedHashValue * FNV_prime)
-                                                ^ b.computedHashValue);
+                                            ((a.getComputedHash() * FNV_prime)
+                                                ^ b.getComputedHash());
                                         for (int klass = 0; klass < oaa; klass++) {
                                           int bucket = getBucket(fnv, klass);
                                           // TODO: check how is that computed for numerical features
@@ -597,9 +627,9 @@ public class ReadableModel {
                                                 String.format(
                                                     "%s^%s*%s^%s:%d:1:%f",
                                                     ans.namespace,
-                                                    a.name,
+                                                    a.getStringName(),
                                                     bns.namespace,
-                                                    b.name,
+                                                    b.getStringName(),
                                                     bucket,
                                                     weights[bucket]));
                                           }
@@ -610,7 +640,8 @@ public class ReadableModel {
                                             stats.featuresLookedUp.add(1);
                                           }
 
-                                          out[klass] += a.value * b.value * weights[bucket];
+                                          result[klass] +=
+                                              a.getValue() * b.getValue() * weights[bucket];
                                         }
                                       });
                                 }));
@@ -632,28 +663,26 @@ public class ReadableModel {
           stats.featuresLookedUp.add(1);
         }
 
-        out[klass] += weights[bucket];
+        result[klass] += weights[bucket];
       }
     }
 
     if (stats != null) {
       // uncliped unnormalized pred historuy
       for (int klass = 0; klass < oaa; klass++) {
-        stats.predictions.add(out[klass]);
+        stats.predictions.add(result[klass]);
       }
     }
 
     if (input.probabilities) {
-      this.clip(out);
+      this.clip(result);
       this.link = this.logistic;
-      this.link(out);
-      this.normalize(out);
+      this.link(result);
+      this.normalize(result);
     } else {
-      this.clip(out);
-      this.link(out);
+      this.clip(result);
+      this.link(result);
     }
-
-    return out;
   }
 
   protected void clip(float[] raw_out) {

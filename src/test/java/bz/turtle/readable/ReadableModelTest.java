@@ -140,7 +140,7 @@ public class ReadableModelTest {
     PredictionRequest predictionRequest =
         new PredictionRequest(
             new Namespace("a", new Feature("42"), new Feature("x")),
-            new Namespace("b", new Feature("42"), new Feature("y")));
+            new Namespace("b", new Feature(42), new Feature("y")));
     assertEquals(m.predict(predictionRequest)[0], 0.281, 0.01);
 
     ReadableModel mHashAll =
@@ -148,7 +148,10 @@ public class ReadableModelTest {
             new File(this.getClass().getClassLoader().getResource("testhashall").getFile()));
     assertEquals(mHashAll.predict(predictionRequest)[0], m.predict(predictionRequest)[0], 0.01);
 
-    assertNotEquals(mHashAll.featureHashOf(100, "42"), m.featureHashOf(100, "42"));
+    assertNotEquals(
+        mHashAll.featureHashOf(100, new Feature("42")), m.featureHashOf(100, new Feature("42")));
+
+    assertEquals(m.featureHashOf(100, new Feature("42")), m.featureHashOf(100, new Feature(42)));
   }
 
   @Test
