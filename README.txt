@@ -18,7 +18,16 @@ using https://gist.github.com/luoq/b4c374b5cbabe3ae76ffacdac22750af,
 and some logic to produce the same buckets for the same feature combinations
 
 ## java code
-ReadableModel m = new ReadableModel("directory/of/readable_model.txt");
+add the dependency in pom.xml
+<dependency>
+    <groupId>bz.turtle</groupId>
+    <artifactId>readable</artifactId>
+    <version>1.0-BETA</version>
+</dependency>
+
+import bz.turtle.readable.*;
+
+ReadableModel m = new ReadableModel("directory/of/readable_model.txt"); // .txt.gz also works
 
 
 // this will load the model creating only float[] array with same size as 2**bits(-b from vw)
