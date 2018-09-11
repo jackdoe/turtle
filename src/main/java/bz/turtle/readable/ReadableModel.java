@@ -501,7 +501,6 @@ public class ReadableModel {
    * @param result place to put result in (@see getReusableFloatArray)
    * @param input PredictionRequest to evaluate
    * @param stats PredictionStats if you want keep track of some basic stats
-   * @return prediction per class
    */
   public void predict(float[] result, PredictionRequest input, PredictionStats stats) {
     if (DEBUG) {
