@@ -33,7 +33,7 @@ public class Namespace implements Serializable {
     return String.format("{%s: %s}", namespace, features.toString());
   }
 
-  public Namespace(String ns, Feature... features) {
+  public Namespace(String ns, FeatureInterface... features) {
     this.namespace = ns;
     this.features = Arrays.asList(features);
   }
