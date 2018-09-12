@@ -281,6 +281,9 @@ public class ReadableModel {
     }
 
     mask = (1 << bits) - 1;
+    if (weights == null) {
+      throw new UnsupportedOperationException("failed to load the model, did not see 'bits:' line");
+    }
   }
 
   /**
@@ -322,6 +325,10 @@ public class ReadableModel {
     } else {
       loadReadableModel(root);
     }
+  }
+
+  public ReadableModel(InputStream is) throws IOException, UnsupportedOperationException {
+    this(is, true);
   }
 
   public ReadableModel(InputStream is, boolean hasIntercept)

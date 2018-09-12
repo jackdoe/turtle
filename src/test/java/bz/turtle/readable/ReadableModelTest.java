@@ -6,6 +6,7 @@ import bz.turtle.readable.input.PredictionRequest;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.InputStream;
 import java.nio.file.Paths;
 
 import static org.junit.Assert.assertEquals;
@@ -52,6 +53,13 @@ public class ReadableModelTest {
                         new Feature("odd=-1"))))[0],
         -1,
         0.01);
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void brokenInput() throws Exception {
+    InputStream is =
+        this.getClass().getClassLoader().getResourceAsStream("testgz/readable_model.txt.gz");
+    ReadableModel m = new ReadableModel(is);
   }
 
   @Test
