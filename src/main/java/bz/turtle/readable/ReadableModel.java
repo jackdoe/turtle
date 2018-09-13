@@ -359,20 +359,17 @@ public class ReadableModel {
   /**
    * read the test file and pred file and try to do the same predictions
    *
-   * @param testFile file with one example per line
-   * @param predFile file output from vw -t -i model --predictions -r
+   * @param testInputStream input stream with one example per line
+   * @param predictionsInputStream input stream with output from vw -t -i model --predictions -r
    * @param probabilities predictions.txt contains probabilities
    * @throws IOException if file reading fails
    * @throws IllegalStateException if predictions mismatch
    */
-  public void makeSureItWorks(File testFile, File predFile, boolean probabilities)
+  public void makeSureItWorks(
+      InputStream testInputStream, InputStream predictionsInputStream, boolean probabilities)
       throws IOException, IllegalStateException {
-    /* to make sure we predict the same values as VW */
-
-    InputStream isTest = getReaderForExt(testFile);
-    InputStream isPred = getReaderForExt(predFile);
-    BufferedReader brTest = new BufferedReader(new InputStreamReader(isTest));
-    BufferedReader brPred = new BufferedReader(new InputStreamReader(isPred));
+    BufferedReader brTest = new BufferedReader(new InputStreamReader(testInputStream));
+    BufferedReader brPred = new BufferedReader(new InputStreamReader(predictionsInputStream));
 
     int lineNum = 0;
     try {
@@ -452,6 +449,24 @@ public class ReadableModel {
       brPred.close();
       brTest.close();
     }
+  }
+
+  /**
+   * read the test file and pred file and try to do the same predictions
+   *
+   * @param testFile file with one example per line
+   * @param predFile file output from vw -t -i model --predictions -r
+   * @param probabilities predictions.txt contains probabilities
+   * @throws IOException if file reading fails
+   * @throws IllegalStateException if predictions mismatch
+   */
+  public void makeSureItWorks(File testFile, File predFile, boolean probabilities)
+      throws IOException, IllegalStateException {
+    /* to make sure we predict the same values as VW */
+
+    InputStream isTest = getReaderForExt(testFile);
+    InputStream isPred = getReaderForExt(predFile);
+    makeSureItWorks(isTest, isPred, probabilities);
   }
 
   private int getBucket(int featureHash, int klass) {

@@ -90,11 +90,6 @@ public class Feature implements FeatureInterface {
     resetIsHashComputed();
   }
 
-  /** feature name */
-  public String getStringName() {
-    return getName();
-  }
-
   /**
    * --hash strings vs --hash all, in case the feature value is integer, there is no need to convert
    * it to string
@@ -117,7 +112,8 @@ public class Feature implements FeatureInterface {
     this.value = value;
   }
 
-  public String getName() {
+  /** @return the string name, recomputed from nameInt if needed @see getIntegerName */
+  public String getStringName() {
     if (!isStringNameComputed) {
       this.name = "" + this.nameInt;
       this.isStringNameComputed = true;
