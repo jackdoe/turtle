@@ -699,7 +699,7 @@ public class ReadableModel {
       this.clip(result);
       this.link = this.logistic;
       this.link(result);
-      this.normalize(result);
+      if (this.oaa > 1) this.normalize(result);
     } else {
       this.clip(result);
       this.link(result);
