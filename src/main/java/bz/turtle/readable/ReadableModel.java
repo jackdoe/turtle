@@ -38,7 +38,7 @@ import java.util.zip.GZIPInputStream;
  */
 public class ReadableModel {
 
-  private static final boolean DEBUG = false;
+  public static boolean DEBUG = false;
   private static final int intercept = 11650396;
   private final int FNV_prime = 16777619;
 

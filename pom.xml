@@ -13,7 +13,7 @@
 
     <groupId>bz.turtle</groupId>
     <artifactId>readable</artifactId>
-    <version>1.2.2-BETA</version>
+    <version>1.2.3-BETA</version>
 
     <description>
         A pure Java reader/predictor of Vowpal Wabbit readable model

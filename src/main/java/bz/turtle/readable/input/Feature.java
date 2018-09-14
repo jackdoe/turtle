@@ -43,16 +43,15 @@ public class Feature implements FeatureInterface {
     this.setValue(v);
   }
 
-  private static boolean isInteger(String s) {
-    return isInteger(s, 10);
+  private static boolean isPositiveInteger(String s) {
+    return isPositiveInteger(s, 10);
   }
 
-  private static boolean isInteger(String s, int radix) {
+  private static boolean isPositiveInteger(String s, int radix) {
     if (s.isEmpty()) return false;
     for (int i = 0; i < s.length(); i++) {
       if (i == 0 && s.charAt(i) == '-') {
-        if (s.length() == 1) return false;
-        else continue;
+        return false;
       }
       if (Character.digit(s.charAt(i), radix) < 0) return false;
     }
@@ -99,6 +98,10 @@ public class Feature implements FeatureInterface {
   }
 
   private void setNameInt(int nameInt) {
+    if (nameInt < 0) {
+      throw new IllegalArgumentException(
+          "in Vowpal Wabbit number feature names have to match [0-9]+");
+    }
     this.nameInt = nameInt;
     this.hasIntegerName = true;
   }
@@ -122,7 +125,7 @@ public class Feature implements FeatureInterface {
   }
 
   private void setName(String name) {
-    if (isInteger(name)) {
+    if (isPositiveInteger(name)) {
       try {
         setNameInt(Integer.parseInt(name));
       } catch (Exception e) {
