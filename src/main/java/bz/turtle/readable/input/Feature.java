@@ -39,7 +39,11 @@ public class Feature implements FeatureInterface {
   public Feature(int name, float v) {
     this.name = null;
     this.isStringNameComputed = false;
-    this.setNameInt(name);
+    if (name < 0) {
+      rename("" + name);
+    } else {
+      this.setNameInt(name);
+    }
     this.setValue(v);
   }
 
@@ -79,9 +83,13 @@ public class Feature implements FeatureInterface {
    * @param name - the new feature name
    */
   public void rename(int name) {
-    this.setNameInt(name);
-    this.isStringNameComputed = false;
-    resetIsHashComputed();
+    if (name < 0) {
+      rename("" + name);
+    } else {
+      this.setNameInt(name);
+      this.isStringNameComputed = false;
+      resetIsHashComputed();
+    }
   }
 
   public void rename(String name) {
@@ -98,10 +106,6 @@ public class Feature implements FeatureInterface {
   }
 
   private void setNameInt(int nameInt) {
-    if (nameInt < 0) {
-      throw new IllegalArgumentException(
-          "in Vowpal Wabbit number feature names have to match [0-9]+");
-    }
     this.nameInt = nameInt;
     this.hasIntegerName = true;
   }
