@@ -35,6 +35,8 @@ import java.util.zip.GZIPInputStream;
  * System.out.println(Arrays.toString(p));
  *
  * </pre>
+ *
+ * ReadableModel is thread safe, so make sure to reuse it between threads
  */
 public class ReadableModel {
   private static final int intercept = 11650396;
@@ -527,7 +529,6 @@ public class ReadableModel {
     int fnv = ((a.getComputedHash() * FNV_prime) ^ b.getComputedHash());
     for (int klass = 0; klass < oaa; klass++) {
       int bucket = getBucket(fnv, klass);
-      // TODO: check how is that computed for numerical features
       if (explain != null) {
         explain.add(
             String.format(
