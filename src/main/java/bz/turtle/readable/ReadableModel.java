@@ -37,8 +37,6 @@ import java.util.zip.GZIPInputStream;
  * </pre>
  */
 public class ReadableModel {
-
-  public static boolean DEBUG = false;
   private static final int intercept = 11650396;
   private final int FNV_prime = 16777619;
 
@@ -222,7 +220,7 @@ public class ReadableModel {
                         break;
                       default:
                         throw new UnsupportedOperationException(
-                            "only --link identity, logistic, glf1,  or poisson are supported "
+                            "only --link identity, logistic, glf1, or poisson are supported "
                                 + value);
                     }
                   }
@@ -510,25 +508,21 @@ public class ReadableModel {
 
   /**
    * @param input PredictionRequest to evaluate
-   * @param stats PredictionStats if you want keep track of some basic stats
+   * @param explain Explanation if you want to get some debug information about the prediction query
    * @return prediction per class
    */
-  public float[] predict(PredictionRequest input, PredictionStats stats) {
+  public float[] predict(PredictionRequest input, Explanation explain) {
     float[] out = getReusableFloatArray();
-    predict(out, input, stats);
+    predict(out, input, explain);
     return out;
   }
 
   /**
    * @param result place to put result in (@see getReusableFloatArray)
    * @param input PredictionRequest to evaluate
-   * @param stats PredictionStats if you want keep track of some basic stats
+   * @param explain Explanation if you want to get some debug information about the prediction query
    */
-  public void predict(float[] result, PredictionRequest input, PredictionStats stats) {
-    if (DEBUG) {
-      System.out.println("-----------");
-    }
-
+  public void predict(float[] result, PredictionRequest input, Explanation explain) {
     for (int klass = 0; klass < oaa; klass++) result[klass] = 0;
 
     // TODO: ngrams skips
@@ -550,18 +544,15 @@ public class ReadableModel {
                 }
                 for (int klass = 0; klass < oaa; klass++) {
                   int bucket = getBucket(f.getComputedHash(), klass);
-                  if (DEBUG) {
-                    System.out.println(
+                  if (explain != null) {
+                    explain.add(
                         String.format(
-                            "%s^%s:%d:1:%f",
-                            n.namespace, f.getStringName(), bucket, weights[bucket]));
-                  }
-
-                  if (stats != null) {
+                            "%s^%s:%d:%d:%f",
+                            n.namespace, f.getStringName(), bucket, klass + 1, weights[bucket]));
                     if (weights[bucket] == 0) {
-                      stats.missingFeatures.add(1);
+                      explain.missingFeatures.add(1);
                     }
-                    stats.featuresLookedUp.add(1);
+                    explain.featuresLookedUp.add(1);
                   }
                   result[klass] += f.getValue() * weights[bucket];
                 }
@@ -590,22 +581,21 @@ public class ReadableModel {
                                   for (int klass = 0; klass < oaa; klass++) {
                                     int bucket = getBucket(fnv, klass);
 
-                                    if (DEBUG) {
-                                      System.out.println(
+                                    if (explain != null) {
+                                      if (weights[bucket] == 0) {
+                                        explain.missingFeatures.add(1);
+                                      }
+                                      explain.featuresLookedUp.add(1);
+                                      explain.add(
                                           String.format(
-                                              "%s^%s*%s^%s:%d:1:%f",
+                                              "%s^%s*%s^%s:%d:%d:%f",
                                               ans.namespace,
                                               a.getStringName(),
                                               bns.namespace,
                                               b.getStringName(),
                                               bucket,
+                                              klass + 1,
                                               weights[bucket]));
-                                    }
-                                    if (stats != null) {
-                                      if (weights[bucket] == 0) {
-                                        stats.missingFeatures.add(1);
-                                      }
-                                      stats.featuresLookedUp.add(1);
                                     }
 
                                     result[klass] += a.getValue() * b.getValue() * weights[bucket];
@@ -643,22 +633,21 @@ public class ReadableModel {
                                         for (int klass = 0; klass < oaa; klass++) {
                                           int bucket = getBucket(fnv, klass);
                                           // TODO: check how is that computed for numerical features
-                                          if (DEBUG) {
-                                            System.out.println(
+                                          if (explain != null) {
+                                            explain.add(
                                                 String.format(
-                                                    "%s^%s*%s^%s:%d:1:%f",
+                                                    "%s^%s*%s^%s:%d:%d:%f",
                                                     ans.namespace,
                                                     a.getStringName(),
                                                     bns.namespace,
                                                     b.getStringName(),
                                                     bucket,
+                                                    klass + 1,
                                                     weights[bucket]));
-                                          }
-                                          if (stats != null) {
                                             if (weights[bucket] == 0) {
-                                              stats.missingFeatures.add(1);
+                                              explain.missingFeatures.add(1);
                                             }
-                                            stats.featuresLookedUp.add(1);
+                                            explain.featuresLookedUp.add(1);
                                           }
 
                                           result[klass] +=
@@ -674,24 +663,22 @@ public class ReadableModel {
     if (hasIntercept) {
       for (int klass = 0; klass < oaa; klass++) {
         int bucket = getBucket(intercept, klass);
-        if (DEBUG) {
-          System.out.println(String.format("%s:%d:1:%f", "Constant", bucket, weights[bucket]));
-        }
-        if (stats != null) {
+        if (explain != null) {
+          explain.add(String.format("%s:%d:%d:%f", "Constant", bucket, klass + 1, weights[bucket]));
           if (weights[bucket] == 0) {
-            stats.missingFeatures.add(1);
+            explain.missingFeatures.add(1);
           }
-          stats.featuresLookedUp.add(1);
+          explain.featuresLookedUp.add(1);
         }
 
         result[klass] += weights[bucket];
       }
     }
 
-    if (stats != null) {
+    if (explain != null) {
       // uncliped unnormalized pred historuy
       for (int klass = 0; klass < oaa; klass++) {
-        stats.predictions.add(result[klass]);
+        explain.predictions.add(result[klass]);
       }
     }
 

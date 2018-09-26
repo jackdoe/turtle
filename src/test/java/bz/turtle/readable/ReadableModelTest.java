@@ -18,6 +18,7 @@ public class ReadableModelTest {
   public void predictBasic() throws Exception {
     File tdir = new File(this.getClass().getClassLoader().getResource("test").getFile());
     ReadableModel m = new ReadableModel(tdir);
+    Explanation e = new Explanation();
     assertEquals(
         m.predict(
                 new PredictionRequest(
@@ -26,9 +27,11 @@ public class ReadableModelTest {
                         new Feature("a"),
                         new Feature("b"),
                         new Feature("c"),
-                        new Feature("odd=-1"))))[0],
+                        new Feature("odd=-1"))),
+                e)[0],
         -1,
         0.01);
+    //    System.out.println(e.toString());
   }
 
   @Test
