@@ -604,6 +604,7 @@ public class ReadableModel {
                           });
                     }));
       } else {
+        // quadratic 'a' -> ['b',c']
         Map<Character, List<Namespace>> prebuild = new HashMap<>();
         // build char -> list of namespaces map so we can work with multiple interactions -q ab -q
         // ac
