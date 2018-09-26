@@ -662,12 +662,11 @@ public class ReadableModel {
 
     if (input.probabilities) {
       this.clip(result);
-      this.link = this.logistic;
-      this.link(result);
+      this.linkWith(result, this.logistic);
       if (this.oaa > 1) this.normalize(result);
     } else {
       this.clip(result);
-      this.link(result);
+      this.linkWith(result, link);
     }
   }
 
@@ -681,9 +680,9 @@ public class ReadableModel {
     return Math.max(Math.min(raw_out, this.maxLabel), this.minLabel);
   }
 
-  protected void link(float[] out) {
+  protected void linkWith(float[] out, DoubleUnaryOperator f) {
     for (int klass = 0; klass < this.oaa; klass++) {
-      out[klass] = (float) this.link.applyAsDouble(out[klass]);
+      out[klass] = (float) f.applyAsDouble(out[klass]);
     }
   }
 

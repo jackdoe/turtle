@@ -266,6 +266,7 @@ public class ReadableModelTest {
     File tdir =
         new File(this.getClass().getClassLoader().getResource("testprobabilities").getFile());
     ReadableModel m = new ReadableModel(tdir, true, true);
+
     assertEquals(
         m.predict(
                 new PredictionRequest(
@@ -278,7 +279,7 @@ public class ReadableModelTest {
                         new Feature("pos"),
                         new Feature("pos"),
                         new Feature("pos"))))[0],
-        0.471778,
+        -0.113007,
         0.0001);
   }
 }
