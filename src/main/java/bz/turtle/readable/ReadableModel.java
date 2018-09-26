@@ -517,6 +517,37 @@ public class ReadableModel {
     return out;
   }
 
+  private void interact(
+      float[] result,
+      Namespace ans,
+      FeatureInterface a,
+      Namespace bns,
+      FeatureInterface b,
+      Explanation explain) {
+    int fnv = ((a.getComputedHash() * FNV_prime) ^ b.getComputedHash());
+    for (int klass = 0; klass < oaa; klass++) {
+      int bucket = getBucket(fnv, klass);
+      // TODO: check how is that computed for numerical features
+      if (explain != null) {
+        explain.add(
+            String.format(
+                "%s^%s*%s^%s:%d:%d:%f",
+                ans.namespace,
+                a.getStringName(),
+                bns.namespace,
+                b.getStringName(),
+                bucket,
+                klass + 1,
+                weights[bucket]));
+        if (weights[bucket] == 0) {
+          explain.missingFeatures.add(1);
+        }
+        explain.featuresLookedUp.add(1);
+      }
+
+      result[klass] += a.getValue() * b.getValue() * weights[bucket];
+    }
+  }
   /**
    * @param result place to put result in (@see getReusableFloatArray)
    * @param input PredictionRequest to evaluate
@@ -576,86 +607,31 @@ public class ReadableModel {
                           a -> {
                             bns.features.forEach(
                                 b -> {
-                                  int fnv =
-                                      ((a.getComputedHash() * FNV_prime) ^ b.getComputedHash());
-                                  for (int klass = 0; klass < oaa; klass++) {
-                                    int bucket = getBucket(fnv, klass);
-
-                                    if (explain != null) {
-                                      if (weights[bucket] == 0) {
-                                        explain.missingFeatures.add(1);
-                                      }
-                                      explain.featuresLookedUp.add(1);
-                                      explain.add(
-                                          String.format(
-                                              "%s^%s*%s^%s:%d:%d:%f",
-                                              ans.namespace,
-                                              a.getStringName(),
-                                              bns.namespace,
-                                              b.getStringName(),
-                                              bucket,
-                                              klass + 1,
-                                              weights[bucket]));
-                                    }
-
-                                    result[klass] += a.getValue() * b.getValue() * weights[bucket];
-                                  }
+                                  interact(result, ans, a, bns, b, explain);
                                 });
                           });
                     }));
       } else {
-        // quadratic 'a' -> ['b',c']
-        Map<Character, List<Namespace>> prebuild = new HashMap<>();
-        // build char -> list of namespaces map so we can work with multiple interactions -q ab -q
-        // ac
-        input.namespaces.forEach(
-            n -> {
-              if (n.namespace.length() == 0) return;
-              prebuild.computeIfAbsent(n.namespace.charAt(0), k -> new ArrayList<>()).add(n);
-            });
-
         input.namespaces.forEach(
             ans -> {
               Set<Character> interactStartingWith = quadratic.get(ans.namespace.charAt(0));
               if (interactStartingWith == null) return;
               interactStartingWith.forEach(
                   inter -> {
-                    List<Namespace> interactions = prebuild.get(inter);
-                    if (interactions == null) return;
-                    interactions.forEach(
-                        bns ->
+                    // instead of building a hash Map<Character, List<Namespace>>
+                    // it should be better to just scan the list and see if anything matches
+                    input.namespaces.forEach(
+                        bns -> {
+                          if (bns.namespace.charAt(0) == inter) {
                             ans.features.forEach(
                                 a -> {
                                   bns.features.forEach(
                                       b -> {
-                                        int fnv =
-                                            ((a.getComputedHash() * FNV_prime)
-                                                ^ b.getComputedHash());
-                                        for (int klass = 0; klass < oaa; klass++) {
-                                          int bucket = getBucket(fnv, klass);
-                                          // TODO: check how is that computed for numerical features
-                                          if (explain != null) {
-                                            explain.add(
-                                                String.format(
-                                                    "%s^%s*%s^%s:%d:%d:%f",
-                                                    ans.namespace,
-                                                    a.getStringName(),
-                                                    bns.namespace,
-                                                    b.getStringName(),
-                                                    bucket,
-                                                    klass + 1,
-                                                    weights[bucket]));
-                                            if (weights[bucket] == 0) {
-                                              explain.missingFeatures.add(1);
-                                            }
-                                            explain.featuresLookedUp.add(1);
-                                          }
-
-                                          result[klass] +=
-                                              a.getValue() * b.getValue() * weights[bucket];
-                                        }
+                                        interact(result, ans, a, bns, b, explain);
                                       });
-                                }));
+                                });
+                          }
+                        });
                   });
             });
       }
