@@ -262,6 +262,29 @@ public class ReadableModelTest {
   }
 
   @Test
+  public void testBrokenOptions() throws Exception {
+    File tdir =
+        new File(
+            this.getClass().getClassLoader().getResource("test_break_options/model.txt").getFile());
+    ReadableModel m = new ReadableModel(tdir);
+
+    assertEquals(
+        m.predict(
+                new PredictionRequest(
+                    new Namespace(
+                        "",
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"),
+                        new Feature("pos"))))[0],
+        0.5,
+        0.0001);
+  }
+
+  @Test
   public void testProbabilities() throws Exception {
     File tdir =
         new File(this.getClass().getClassLoader().getResource("testprobabilities").getFile());

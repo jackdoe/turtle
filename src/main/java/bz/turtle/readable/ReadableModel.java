@@ -47,7 +47,7 @@ public class ReadableModel {
    * This is the actual model of size 2**bits if you build something with vw -b 18 it will be of
    * size 262144
    */
-  public float[] weights;
+  private float[] weights;
 
   private int bits;
 
@@ -79,8 +79,14 @@ public class ReadableModel {
     o = o.trim();
     if (o.isEmpty()) return;
     String[] op = o.split("\\s+");
-    for (int i = 0; i < op.length; i += 2) {
-      cb.accept(op[i], op[i + 1]);
+    for (int i = 0; i < op.length; i++) {
+      if (op[i].contains("=")) {
+        String[] splitted = op[i].split("=");
+        cb.accept(splitted[0], splitted[1]);
+      } else {
+        cb.accept(op[i], op[i + 1]);
+        i++; // skip 2 at a time
+      }
     }
   }
 
