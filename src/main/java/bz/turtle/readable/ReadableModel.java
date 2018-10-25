@@ -203,7 +203,7 @@ public class ReadableModel {
                     oaa = Integer.parseInt(value);
 
                     multiClassBits = 0;
-                    int ml = oaa;
+                    int ml = oaa - 1;
                     while (ml > 0) {
                       multiClassBits++;
                       ml >>= 1;

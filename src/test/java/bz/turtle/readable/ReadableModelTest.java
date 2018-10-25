@@ -144,6 +144,18 @@ public class ReadableModelTest {
   }
 
   @Test
+  public void testOaa() throws Exception {
+    File tdir = new File(this.getClass().getClassLoader().getResource("oaa").getFile());
+    ReadableModel m = new ReadableModel(tdir, true, false);
+
+    tdir = new File(this.getClass().getClassLoader().getResource("oaa7").getFile());
+    m = new ReadableModel(tdir, true, false);
+
+    tdir = new File(this.getClass().getClassLoader().getResource("oaa10").getFile());
+    m = new ReadableModel(tdir, true, false);
+  }
+
+  @Test
   public void hashAllVsStrings() throws Exception {
     File tdir = new File(this.getClass().getClassLoader().getResource("testhashnum").getFile());
     ReadableModel m = new ReadableModel(tdir);
