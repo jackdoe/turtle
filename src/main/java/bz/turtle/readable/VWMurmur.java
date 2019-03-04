@@ -19,17 +19,8 @@ public class VWMurmur {
   }
 
   public static int hash(String s, int seed) {
-    int result = 0;
-    for (int i = 0; i < s.length(); i++) {
-      char c = s.charAt(i);
-      if (c >= '0' && c <= '9')
-        result = 10 * result + c - '0';
-      else {
-        byte[] d = s.getBytes();
-        return hash(d, d.length, seed);
-      }
-    }
-    return result;
+    byte[] d = s.getBytes();
+    return hash(d, d.length, seed);
   }
 
   public static int hash(byte[] data, int len, int seed) {
