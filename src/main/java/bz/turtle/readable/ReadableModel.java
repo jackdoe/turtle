@@ -480,8 +480,7 @@ public class ReadableModel {
   }
 
   /**
-   * @param mmNamespaceHash the namespace hash VWMurmur.hash(namespace, seed) where seed is usually
-   *     0 unless you pass --hash_seed to vw
+   * @param mmNamespaceHash the namespace hash, as given by namespaceHashOf(namespace, seed)
    * @param feature the feature to compute hash of
    * @return the hash of the feature according to vw
    *     <p>check out
@@ -494,6 +493,31 @@ public class ReadableModel {
       if (feature.hasIntegerName()) return feature.getIntegerName() + mmNamespaceHash;
       return VWMurmur.hash(feature.getStringName(), mmNamespaceHash);
     }
+  }
+
+  /**
+   * @param namespace the namespace to compute the hash of
+   * @param seed the seed used to build the model (usually 0, unless you pass --hash_seed to vw)
+   * @return the hash of the namespace according to vw
+   *     <p>check out
+   *     https://github.com/JohnLangford/vowpal_wabbit/blob/579c34d2d2fd151b419bea54d9921fc7f3f55bbc/vowpalwabbit/parse_primitives.cc#L48
+   */
+  public int namespaceHashOf(Namespace namespace, int seed) {
+    String s = namespace.namespace;
+
+    if (hashAll) return VWMurmur.hash(s, seed);
+
+    int result = 0;
+    for (int i = 0; i < s.length(); i++) {
+      char c = s.charAt(i);
+      if (c >= '0' && c <= '9') {
+        result = 10 * result + c - '0';
+      } else {
+        byte[] d = s.getBytes();
+        return VWMurmur.hash(s, seed);
+      }
+    }
+    return result;
   }
 
   /**
@@ -569,7 +593,7 @@ public class ReadableModel {
     input.namespaces.forEach(
         n -> {
           if (!n.hashIsComputed) {
-            int namespaceHash = n.namespace.length() == 0 ? 0 : VWMurmur.hash(n.namespace, seed);
+            int namespaceHash = n.namespace.length() == 0 ? 0 : namespaceHashOf(n, seed);
             n.computedHashValue = namespaceHash;
             n.hashIsComputed = true;
           }

@@ -317,4 +317,19 @@ public class ReadableModelTest {
         -0.113007,
         0.0001);
   }
+
+  @Test
+  public void testNumberNamespace() throws Exception {
+    File tdir = new File(this.getClass().getClassLoader().getResource("test_number_ns").getFile());
+    ReadableModel m = new ReadableModel(tdir);
+    Explanation e = new Explanation();
+    m.predict(
+            new PredictionRequest(
+                    new Namespace("0", new Feature("a"), new Feature("b")),
+                    new Namespace("1", new Feature("c")),
+                    new Namespace("42", new Feature("d")),
+                    new Namespace("a", new Feature("e"))),
+            e);
+    assertEquals(0, (int) e.missingFeatures.get());
+  }
 }
