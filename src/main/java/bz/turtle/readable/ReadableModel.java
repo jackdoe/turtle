@@ -513,7 +513,6 @@ public class ReadableModel {
       if (c >= '0' && c <= '9') {
         result = 10 * result + c - '0';
       } else {
-        byte[] d = s.getBytes();
         return VWMurmur.hash(s, seed);
       }
     }
