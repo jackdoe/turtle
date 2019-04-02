@@ -11,7 +11,6 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.DoubleUnaryOperator;
-import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -41,6 +40,8 @@ import java.util.zip.GZIPInputStream;
  */
 public class ReadableModel {
   private static final int intercept = 11650396;
+  private static final Comparator<FeatureInterface> NOOP_COMPARATOR = (o1, o2) -> 0;
+  private static final Set<Character> EMPTY_SET = new HashSet<>();
   private final int FNV_prime = 16777619;
 
   private boolean hasIntercept = true;
@@ -266,9 +267,9 @@ public class ReadableModel {
                        */
                       quadraticAnyToAny = true;
                     } else {
-                      quadratic
-                          .computeIfAbsent(value.charAt(0), k -> new HashSet<>())
-                          .add(value.charAt(1));
+                        quadratic
+                                .computeIfAbsent(value.charAt(0), k -> new HashSet<>())
+                                .add(value.charAt(1));
                     }
                   }
                   // TODO: --cubic
@@ -544,8 +545,19 @@ public class ReadableModel {
    * @return prediction per class
    */
   public float[] predict(PredictionRequest input, Explanation explain) {
+    return predict(input, explain, NOOP_COMPARATOR);
+  }
+
+  /**
+   * @param input PredictionRequest to evaluate
+   * @param explain Explanation if you want to get some debug information about the prediction query
+   * @param featureComparator Comparator to sort the features with in case you had a specific order at training time
+   * @return prediction per class
+   */
+  public float[] predict(PredictionRequest input, Explanation explain,
+                         Comparator<FeatureInterface> featureComparator) {
     float[] out = getReusableFloatArray();
-    predict(out, input, explain);
+    predict(out, input, explain, featureComparator);
     return out;
   }
 
@@ -579,12 +591,24 @@ public class ReadableModel {
       result[klass] += a.getValue() * b.getValue() * weights[bucket];
     }
   }
+
   /**
    * @param result place to put result in (@see getReusableFloatArray)
    * @param input PredictionRequest to evaluate
    * @param explain Explanation if you want to get some debug information about the prediction query
    */
   public void predict(float[] result, PredictionRequest input, Explanation explain) {
+    predict(result, input, explain, NOOP_COMPARATOR);
+  }
+
+  /**
+   * @param result place to put result in (@see getReusableFloatArray)
+   * @param input PredictionRequest to evaluate
+   * @param explain Explanation if you want to get some debug information about the prediction query
+   * @param featureComparator Comparator to sort the features with in case you had a specific order at training time
+   */
+  public void predict(float[] result, PredictionRequest input, Explanation explain,
+                      Comparator<FeatureInterface> featureComparator) {
     for (int klass = 0; klass < oaa; klass++) result[klass] = 0;
 
     // TODO: ngrams skips
@@ -592,6 +616,7 @@ public class ReadableModel {
 
     input.namespaces.forEach(
         n -> {
+          n.features.sort(featureComparator);
           if (!n.hashIsComputed) {
             int namespaceHash = n.namespace.length() == 0 ? 0 : namespaceHashOf(n, seed);
             n.computedHashValue = namespaceHash;
@@ -645,35 +670,52 @@ public class ReadableModel {
       } else {
         input.namespaces.sort(Comparator.comparing(ans -> ans.namespace));
 
-        // Store interactions in a map so that we don't interact 'b' with 'a' if we already did 'a' with 'b'.
-        Map<String, Set<String>> alreadyInteracted = input.namespaces.stream()
-                .collect(Collectors.toMap(ns -> ns.namespace, ns -> new HashSet<>()));
-
-        input.namespaces.forEach(
-            ans -> {
-              Set<Character> interactStartingWith = quadratic.get(ans.namespace.charAt(0));
-              if (interactStartingWith == null) return;
-              interactStartingWith.forEach(
-                  inter -> {
-                    // instead of building a hash Map<Character, List<Namespace>>
-                    // it should be better to just scan the list and see if anything matches
-                    input.namespaces.forEach(
-                        bns -> {
-                          if (bns.namespace.charAt(0) == inter) {
-                            ans.features.forEach(
-                                a -> {
-                                  bns.features.forEach(
-                                      b -> {
-                                        if (!alreadyInteracted.get(bns.namespace).contains(ans.namespace)) {
-                                          interact(result, ans, a, bns, b, explain);
-                                          alreadyInteracted.get(ans.namespace).add(bns.namespace);
-                                        }
-                                      });
-                                });
-                          }
-                        });
-                  });
-            });
+        for (int i = 0; i < input.namespaces.size(); i++) {
+          Namespace ans = input.namespaces.get(i);
+          Set<Character> interactStartingWith = quadratic.get(ans.namespace.charAt(0));
+          if (interactStartingWith == null)
+            continue;
+          int finalI = i;
+          interactStartingWith.forEach(inter -> {
+            // We want to avoid double interactions of namespaces in the form of
+            // sl, ls. So what we do is:
+            // 1: sort the namespaces in the input
+            // 2: Check if the interaction was there previously with the other namespace, return if so
+            // 3: Check from the beginning of the namespaces list if not (2).
+            // 4: Continue from position `finalI` if the namespace is >= the current namespace according to
+            // the order in the sorted list of namespaces.
+            int startFrom = finalI;
+            if (ans.namespace.charAt(0) > inter) {
+              if (quadratic.getOrDefault(inter, EMPTY_SET).contains(ans.namespace.charAt(0))) {
+                return;
+              } else {
+                startFrom = 0;
+              }
+            }
+            for (int j = startFrom; j < input.namespaces.size(); j++) {
+              Namespace bns = input.namespaces.get(j);
+              if (bns.namespace.charAt(0) == inter) {
+                // in case of self interaction of namespaces we want to filter out
+                // interactions of features in reverse order twice to be consistent with the filtering
+                // vw does itself:
+                // https://github.com/VowpalWabbit/vowpal_wabbit/wiki/Feature-interactions
+                if (ans.namespace.charAt(0) == inter) {
+                  for (int ii = 0; ii < ans.features.size(); ii++) {
+                    for (int jj = ii; jj < bns.features.size(); jj++) {
+                      interact(result, ans, ans.features.get(ii), bns, bns.features.get(jj),
+                              explain);
+                    }
+                  }
+                } else {
+                  ans.features.forEach(
+                          a -> bns.features.forEach(
+                                  b ->
+                                          interact(result, ans, a, bns, b, explain)));
+                }
+              }
+            }
+          });
+        }
       }
     }
 
