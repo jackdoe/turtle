@@ -11,6 +11,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.DoubleUnaryOperator;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -642,6 +643,12 @@ public class ReadableModel {
                           });
                     }));
       } else {
+        input.namespaces.sort(Comparator.comparing(ans -> ans.namespace));
+
+        // Store interactions in a map so that we don't interact 'b' with 'a' if we already did 'a' with 'b'.
+        Map<String, Set<String>> alreadyInteracted = input.namespaces.stream()
+                .collect(Collectors.toMap(ns -> ns.namespace, ns -> new HashSet<>()));
+
         input.namespaces.forEach(
             ans -> {
               Set<Character> interactStartingWith = quadratic.get(ans.namespace.charAt(0));
@@ -657,7 +664,10 @@ public class ReadableModel {
                                 a -> {
                                   bns.features.forEach(
                                       b -> {
-                                        interact(result, ans, a, bns, b, explain);
+                                        if (!alreadyInteracted.get(bns.namespace).contains(ans.namespace)) {
+                                          interact(result, ans, a, bns, b, explain);
+                                          alreadyInteracted.get(ans.namespace).add(bns.namespace);
+                                        }
                                       });
                                 });
                           }
