@@ -602,6 +602,18 @@ public class ReadableModel {
     }
   }
 
+  /**
+   * Computes the interaction between three features.
+   *
+   * @param result place to put result in (@see getReusableFloatArray)
+   * @param ans namespace of the first feature
+   * @param a first feature
+   * @param bns namespace of the second feature
+   * @param b second feature
+   * @param cns namespace of the third feature
+   * @param c third feature
+   * @param explain {@link Explanation} that gathers debug data
+   */
   private void interact3(
           float[] result,
           Namespace ans,
@@ -657,7 +669,6 @@ public class ReadableModel {
     for (int klass = 0; klass < oaa; klass++) result[klass] = 0;
 
     // TODO: ngrams skips
-    // TODO: --cubic hash calculation
 
     input.namespaces.forEach(
         n -> {
