@@ -86,15 +86,11 @@ public class Fuzz {
     }
   }
 
-  @Test(expected = UnsupportedOperationException.class)
+  @Test
   public void testCubic() throws Exception {
     if (vwfound()) {
       TestSet ts = new TestSet(0, 10);
-      try {
-        runVW(ts, "--cubic abc", "");
-      } finally {
-        ts.tearDown();
-      }
+      runVW(ts, "--cubic abc", "");
     }
   }
 

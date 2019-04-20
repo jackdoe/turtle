@@ -67,6 +67,7 @@ public class ReadableModel {
   // -q ab
   // -q ac
   private Map<Character, Set<Character>> quadratic = new HashMap<>();
+  private Map<Character, Map<Character, Set<Character>>> cubic = new HashMap<>();
   private boolean quadraticAnyToAny = false;
 
   private DoubleUnaryOperator identity = DoubleUnaryOperator.identity();
@@ -212,7 +213,17 @@ public class ReadableModel {
                     }
                   }
                   if (key.equals("--cubic")) {
-                    throw new UnsupportedOperationException("we do not support --cubic yet");
+                    if (value.contains(":")) {
+                      throw new UnsupportedOperationException("Any to any cubic interactions are not yet supported");
+                    } else if (value.charAt(0) == value.charAt(1)
+                            || value.charAt(0) == value.charAt(2)
+                            || value.charAt(1) == value.charAt(2)) {
+                      throw new UnsupportedOperationException("Cubic interactions within the same namespace are not yet supported");
+                    } else {
+                      cubic.computeIfAbsent(value.charAt(0), k -> new HashMap<>())
+                              .computeIfAbsent(value.charAt(1), k -> new HashSet<>())
+                              .add(value.charAt(2));
+                    }
                   }
                   if (key.equals("--link")) {
                     switch (value) {
@@ -272,7 +283,6 @@ public class ReadableModel {
                                 .add(value.charAt(1));
                     }
                   }
-                  // TODO: --cubic
                   // TODO: ngrams, skips
                   // TODO: lda
                 });
@@ -593,6 +603,53 @@ public class ReadableModel {
   }
 
   /**
+   * Computes the interaction between three features.
+   *
+   * @param result place to put result in (@see getReusableFloatArray)
+   * @param ans namespace of the first feature
+   * @param a first feature
+   * @param bns namespace of the second feature
+   * @param b second feature
+   * @param cns namespace of the third feature
+   * @param c third feature
+   * @param explain {@link Explanation} that gathers debug data
+   */
+  private void interact3(
+          float[] result,
+          Namespace ans,
+          FeatureInterface a,
+          Namespace bns,
+          FeatureInterface b,
+          Namespace cns,
+          FeatureInterface c,
+          Explanation explain) {
+    int fnv = (((a.getComputedHash() * FNV_prime) ^ b.getComputedHash()) * FNV_prime) ^ c.getComputedHash();
+    for (int klass = 0; klass < oaa; klass++) {
+      int bucket = getBucket(fnv, klass);
+      if (explain != null) {
+        explain.add(
+                String.format(
+                        "%s^%s*%s^%s*%s^%s:%d:%d:%f",
+                        ans.namespace,
+                        a.getStringName(),
+                        bns.namespace,
+                        b.getStringName(),
+                        cns.namespace,
+                        c.getStringName(),
+                        bucket,
+                        klass + 1,
+                        weights[bucket]));
+        if (weights[bucket] == 0) {
+          explain.missingFeatures.add(1);
+        }
+        explain.featuresLookedUp.add(1);
+      }
+
+      result[klass] += a.getValue() * b.getValue() * c.getValue() * weights[bucket];
+    }
+  }
+
+  /**
    * @param result place to put result in (@see getReusableFloatArray)
    * @param input PredictionRequest to evaluate
    * @param explain Explanation if you want to get some debug information about the prediction query
@@ -612,7 +669,6 @@ public class ReadableModel {
     for (int klass = 0; klass < oaa; klass++) result[klass] = 0;
 
     // TODO: ngrams skips
-    // TODO: --cubic hash calculation
 
     input.namespaces.forEach(
         n -> {
@@ -717,6 +773,27 @@ public class ReadableModel {
           });
         }
       }
+    }
+
+    if (cubic.size() > 0) {
+      Map<Character, Namespace> nsMap = new HashMap<>();
+      input.namespaces.stream().forEach(ns -> nsMap.put(ns.namespace.charAt(0), ns));
+      cubic.forEach((a, bMap) -> {
+        Namespace ans = nsMap.get(a);
+        if (ans == null) return;
+        bMap.forEach((b, cSet) -> {
+          Namespace bns = nsMap.get(b);
+          if (bns == null) return;
+          cSet.forEach(c -> {
+            Namespace cns = nsMap.get(c);
+            if (cns == null) return;
+            ans.features.forEach(
+                    af -> bns.features.forEach(
+                            bf -> cns.features.forEach(
+                                    cf -> interact3(result, ans, af, bns, bf, cns, cf, explain))));
+          });
+        });
+      });
     }
 
     if (hasIntercept) {

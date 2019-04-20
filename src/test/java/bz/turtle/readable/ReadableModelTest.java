@@ -332,4 +332,25 @@ public class ReadableModelTest {
             e);
     assertEquals(0, (int) e.missingFeatures.get());
   }
+
+  @Test
+  public void testCubic() throws Exception {
+    File tdir = new File(this.getClass().getClassLoader().getResource("testcubic").getFile());
+    ReadableModel m = new ReadableModel(tdir);
+    Explanation e = new Explanation();
+    m.predict(
+            new PredictionRequest(
+                    new Namespace("a", new Feature("price", 0.23f)),
+                    new Namespace("b",
+                            new Feature("sqft", 0.25f),
+                            new Feature("sqteeth", 0.10f)),
+                    new Namespace("c", new Feature("age", 0.05f)),
+                    new Namespace("d",
+                            new Feature("nr_monkeys", 0.05f),
+                            new Feature("nr_foos", 1),
+                            new Feature("nr_bars", 2))),
+            e);
+    assertEquals(1.0, e.featuresLookedUp.get(), 0.0001);
+    assertEquals(0, (int) e.missingFeatures.get());
+  }
 }
