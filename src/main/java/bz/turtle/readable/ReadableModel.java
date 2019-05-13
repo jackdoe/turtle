@@ -500,10 +500,10 @@ public class ReadableModel {
    */
   public int featureHashOf(int mmNamespaceHash, FeatureInterface feature) {
     if (hashAll) {
-      return VWMurmur.hash(feature.getStringName(), mmNamespaceHash);
+      return VWMurmur.hash(feature.getBytes(), mmNamespaceHash);
     } else {
       if (feature.hasIntegerName()) return feature.getIntegerName() + mmNamespaceHash;
-      return VWMurmur.hash(feature.getStringName(), mmNamespaceHash);
+      return VWMurmur.hash(feature.getBytes(), mmNamespaceHash);
     }
   }
 
@@ -515,7 +515,7 @@ public class ReadableModel {
    *     https://github.com/JohnLangford/vowpal_wabbit/blob/579c34d2d2fd151b419bea54d9921fc7f3f55bbc/vowpalwabbit/parse_primitives.cc#L48
    */
   public int namespaceHashOf(Namespace namespace, int seed) {
-    String s = namespace.namespace;
+    StringBuilder s = namespace.namespace;
 
     if (hashAll) return VWMurmur.hash(s, seed);
 
@@ -724,7 +724,28 @@ public class ReadableModel {
                           });
                     }));
       } else {
-        input.namespaces.sort(Comparator.comparing(ans -> ans.namespace));
+        input.namespaces.sort(new Comparator<Namespace>() {
+          @Override
+          public int compare(Namespace o1, Namespace o2) {
+            return compare(o1.namespace, o2.namespace);
+          }
+
+          private int compare(StringBuilder o1, StringBuilder o2) {
+            int len1 = o1.length();
+            int len2 = o2.length();
+            int lim = Math.min(len1, len2);
+            int k = 0;
+            while (k < lim) {
+              char c1 = o1.charAt(k);
+              char c2 = o2.charAt(k);
+              if (c1 != c2) {
+                return c1 - c2;
+              }
+              k++;
+            }
+            return len1 - len2;
+          }
+        });
 
         for (int i = 0; i < input.namespaces.size(); i++) {
           Namespace ans = input.namespaces.get(i);
