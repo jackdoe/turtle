@@ -116,8 +116,8 @@ public class Feature implements FeatureInterface {
       this.setNameInt(name);
       this.isStringNameComputed = false;
       this.isBytesNameComputed = false;
-      resetIsHashComputed();
     }
+    resetIsHashComputed();
   }
 
   public void rename(StringBuilder name) {
