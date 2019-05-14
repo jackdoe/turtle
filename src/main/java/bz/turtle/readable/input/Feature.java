@@ -120,7 +120,7 @@ public class Feature implements FeatureInterface {
     resetIsHashComputed();
   }
 
-  public void rename(StringBuilder name) {
+  public void rename(CharSequence name) {
     this.setName(name);
     resetIsHashComputed();
   }

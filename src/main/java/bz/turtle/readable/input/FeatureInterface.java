@@ -13,7 +13,7 @@ public interface FeatureInterface {
 
   float getValue();
 
-  void rename(StringBuilder name);
+  void rename(CharSequence name);
 
   void rename(int name);
 
