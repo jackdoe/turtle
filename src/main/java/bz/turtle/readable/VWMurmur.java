@@ -1,5 +1,7 @@
 package bz.turtle.readable;
 
+import java.nio.ByteBuffer;
+
 /**
  * copy paste reimplementation from explore/hash.h in JohnLangford/vowpal_wabbit since i couldnt
  * find published murmur for java that returns the same hash as VW so i had to copy it
@@ -18,12 +20,13 @@ public class VWMurmur {
     return h;
   }
 
-  public static int hash(String s, int seed) {
-    byte[] d = s.getBytes();
-    return hash(d, d.length, seed);
+  public static int hash(StringBuilder s, int seed) {
+    ByteBuffer d = ByteBuffer.wrap(s.toString().getBytes());
+    return hash(d, seed);
   }
 
-  public static int hash(byte[] data, int len, int seed) {
+  public static int hash(ByteBuffer data, int seed) {
+    int len = data.limit();
     int nblocks = len / 4;
     int h1 = seed;
     int c1 = 0xcc9e2d51;
@@ -31,7 +34,7 @@ public class VWMurmur {
 
     int i = 0;
     while (i <= len - 4) {
-      int k1 = (data[i] | data[i + 1] << 8 | data[i + 2] << 16 | data[i + 3] << 24);
+      int k1 = (data.get(i) | data.get(i + 1) << 8 | data.get(i + 2) << 16 | data.get(i + 3) << 24);
 
       k1 *= c1;
       k1 = rotl32(k1, 15);
@@ -48,11 +51,11 @@ public class VWMurmur {
     int end = (nblocks * 4);
     switch (len & 3) {
       case 3:
-        k1 ^= (int) data[end + 2] << 16;
+        k1 ^= (int) data.get(end + 2) << 16;
       case 2:
-        k1 ^= (int) data[end + 1] << 8;
+        k1 ^= (int) data.get(end + 1) << 8;
       case 1:
-        k1 ^= (int) data[end];
+        k1 ^= (int) data.get(end);
 
         k1 *= c1;
         k1 = rotl32(k1, 15);

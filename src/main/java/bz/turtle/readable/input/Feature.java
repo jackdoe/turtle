@@ -1,58 +1,81 @@
 package bz.turtle.readable.input;
 
+import sun.nio.cs.ThreadLocalCoders;
+
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
+
 /**
  * We compute the hash value only once do not reuse between namespaces because the hash is dependent
  * on the namespace hash
  */
 public class Feature implements FeatureInterface {
+  /**
+   * used so we dont recompute the hash value of the feature
+   */
+  private static final Charset charset = StandardCharsets.UTF_8;
+  /**
+   * used so we dont recompute the hash value of the feature
+   */
+  public transient int computedHashValue;
+  public transient boolean hashIsComputed = false;
   private int nameInt;
   private float value = 1f;
-
   private boolean isStringNameComputed = false;
-  /** used so we dont recompute the hash value of the feature */
-  public transient int computedHashValue;
-  /** used so we dont recompute the hash value of the feature */
-  public transient boolean hashIsComputed = false;
-
-  private String name;
+  private boolean isBytesNameComputed = false;
+  private StringBuilder name;
   private boolean hasIntegerName;
+  private int bufferSize = 10240;
+  private CharBuffer charBuffer = CharBuffer.wrap(new char[bufferSize]);
+  private ByteBuffer byteBuffer = ByteBuffer.wrap(new byte[bufferSize]);
 
-  public boolean hasIntegerName() {
-    return hasIntegerName;
+  public Feature() {
   }
 
-  public Feature() {}
+  public Feature(StringBuilder name) {
+    this(name, 1);
+  }
 
   public Feature(String name) {
-    this(name, 1);
+    this(new StringBuilder(name), 1);
   }
 
   public Feature(int name) {
     this(name, 1);
   }
 
-  public Feature(String name, float value) {
+  public Feature(CharSequence name, float value) {
+    this.name = new StringBuilder();
     this.setName(name);
     this.setValue(value);
+  }
+
+  public Feature(String name, float value) {
+    this(new StringBuilder(name), value);
   }
 
   public Feature(int name, float v) {
     this.name = null;
     this.isStringNameComputed = false;
     if (name < 0) {
-      rename("" + name);
+      rename(name);
     } else {
       this.setNameInt(name);
     }
     this.setValue(v);
   }
 
-  private static boolean isPositiveInteger(String s) {
+  private static boolean isPositiveInteger(CharSequence s) {
     return isPositiveInteger(s, 10);
   }
 
-  private static boolean isPositiveInteger(String s, int radix) {
-    if (s.isEmpty()) return false;
+  private static boolean isPositiveInteger(CharSequence s, int radix) {
+    if (s.length() == 0) return false;
     for (int i = 0; i < s.length(); i++) {
       if (i == 0 && s.charAt(i) == '-') {
         return false;
@@ -72,6 +95,10 @@ public class Feature implements FeatureInterface {
     return new Feature(name, value);
   }
 
+  public boolean hasIntegerName() {
+    return hasIntegerName;
+  }
+
   @Override
   public String toString() {
     return String.format("%s[%d]:%f", getStringName(), this.getIntegerName(), getValue());
@@ -84,22 +111,38 @@ public class Feature implements FeatureInterface {
    */
   public void rename(int name) {
     if (name < 0) {
-      rename("" + name);
+      this.setName(name);
     } else {
       this.setNameInt(name);
       this.isStringNameComputed = false;
-      resetIsHashComputed();
+      this.isBytesNameComputed = false;
     }
+    resetIsHashComputed();
   }
 
-  public void rename(String name) {
+  public void rename(CharSequence name) {
+    this.setName(name);
+    resetIsHashComputed();
+  }
+
+  public void rename(double name) {
+    this.setName(name);
+    resetIsHashComputed();
+  }
+
+  public void rename(float name) {
+    this.setName(name);
+    resetIsHashComputed();
+  }
+
+  public void rename(long name) {
     this.setName(name);
     resetIsHashComputed();
   }
 
   /**
-   * --hash strings vs --hash all, in case the feature value is integer, there is no need to convert
-   * it to string
+   * --hash strings vs --hash all, in case the feature value is integer, there is no need to
+   * convert it to string
    */
   public int getIntegerName() {
     return nameInt;
@@ -110,7 +153,9 @@ public class Feature implements FeatureInterface {
     this.hasIntegerName = true;
   }
 
-  /** feature value */
+  /**
+   * feature value
+   */
   public float getValue() {
     return value;
   }
@@ -119,34 +164,102 @@ public class Feature implements FeatureInterface {
     this.value = value;
   }
 
-  /** @return the string name, recomputed from nameInt if needed @see getIntegerName */
+  /**
+   * @return the string name, recomputed from nameInt if needed @see getIntegerName
+   */
   public String getStringName() {
     if (!isStringNameComputed) {
-      this.name = "" + this.nameInt;
+      this.name.setLength(0);
+      this.name.append(this.nameInt);
       this.isStringNameComputed = true;
     }
-    return name;
+    return name.toString();
   }
 
-  private void setName(String name) {
+  public ByteBuffer getBytes() {
+    if (!isBytesNameComputed) {
+      this.setByteBuffer();
+    }
+    return this.byteBuffer;
+  }
+
+  private void setName(CharSequence name) {
     if (isPositiveInteger(name)) {
       try {
-        setNameInt(Integer.parseInt(name));
+        setNameInt(Util.parseInt(name));
       } catch (Exception e) {
       }
     }
 
     this.isStringNameComputed = true;
-    this.name = name;
+    this.name.setLength(0);
+    this.name.append(name);
+    this.setByteBuffer();
+  }
+
+  private void setName(int name) {
+    if (name > 0) {
+      try {
+        setNameInt(name);
+      } catch (Exception e) {
+      }
+    }
+
+    this.isStringNameComputed = true;
+    this.name.setLength(0);
+    this.name.append(name);
+    this.setByteBuffer();
+  }
+
+  private void setName(double name) {
+    this.isStringNameComputed = true;
+    this.name.setLength(0);
+    this.name.append(name);
+    this.setByteBuffer();
+  }
+
+  private void setName(long name) {
+    this.isStringNameComputed = true;
+    this.name.setLength(0);
+    this.name.append(name);
+    this.setByteBuffer();
+  }
+
+  private void setName(float name) {
+    this.isStringNameComputed = true;
+    this.name.setLength(0);
+    this.name.append(name);
+    this.setByteBuffer();
+  }
+
+  private void setByteBuffer() {
+    this.charBuffer.clear();
+    this.byteBuffer.clear();
+
+    CharsetEncoder ce = ThreadLocalCoders.encoderFor(charset)
+        .onMalformedInput(CodingErrorAction.REPLACE)
+        .onUnmappableCharacter(CodingErrorAction.REPLACE)
+        .reset();
+
+
+    for (int i = 0; i < this.name.length(); i++) {
+      this.charBuffer.put(this.name.charAt(i));
+    }
+    this.charBuffer.flip();
+    try {
+      Util.encode(ce, this.charBuffer, this.byteBuffer);
+    } catch (CharacterCodingException e ) {
+    }
+    this.isBytesNameComputed = true;
+  }
+
+  public int getComputedHash() {
+    return computedHashValue;
   }
 
   public void setComputedHash(int n) {
     this.computedHashValue = n;
     this.hashIsComputed = true;
-  }
-
-  public int getComputedHash() {
-    return computedHashValue;
   }
 
   public boolean isHashComputed() {

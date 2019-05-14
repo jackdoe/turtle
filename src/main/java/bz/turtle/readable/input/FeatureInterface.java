@@ -1,5 +1,7 @@
 package bz.turtle.readable.input;
 
+import java.nio.ByteBuffer;
+
 public interface FeatureInterface {
   boolean hasIntegerName();
 
@@ -7,15 +9,23 @@ public interface FeatureInterface {
 
   String getStringName();
 
+  ByteBuffer getBytes();
+
   float getValue();
 
-  void rename(String name);
+  void rename(CharSequence name);
 
   void rename(int name);
 
-  void setComputedHash(int h);
+  void rename(double name);
+
+  void rename(float name);
+
+  void rename(long name);
 
   int getComputedHash();
+
+  void setComputedHash(int h);
 
   void resetIsHashComputed();
 
