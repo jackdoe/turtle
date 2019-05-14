@@ -22,7 +22,7 @@ add the dependency in pom.xml
 <dependency>
     <groupId>bz.turtle</groupId>
     <artifactId>readable</artifactId>
-    <version>2.0.7-BETA</version>
+    <version>2.0.8-BETA</version>
 </dependency>
 
 import bz.turtle.readable.*;
