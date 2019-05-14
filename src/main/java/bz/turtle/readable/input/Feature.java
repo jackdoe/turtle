@@ -1,7 +1,5 @@
 package bz.turtle.readable.input;
 
-import bz.turtle.readable.input.ThreadLocalCoders;
-
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
