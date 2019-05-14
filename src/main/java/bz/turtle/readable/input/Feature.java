@@ -2,6 +2,7 @@ package bz.turtle.readable.input;
 
 import bz.turtle.readable.input.ThreadLocalCoders;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -233,8 +234,10 @@ public class Feature implements FeatureInterface {
   }
 
   private void setByteBuffer() {
-    this.charBuffer.clear();
-    this.byteBuffer.clear();
+    // This (Buffer) is here to avoid NoSuchMethodError
+    ((Buffer)this.charBuffer).clear();
+    // This (Buffer) is here to avoid NoSuchMethodError
+    ((Buffer)this.byteBuffer).clear();
 
     CharsetEncoder ce = ThreadLocalCoders.encoderFor(charset)
         .onMalformedInput(CodingErrorAction.REPLACE)
@@ -245,7 +248,8 @@ public class Feature implements FeatureInterface {
     for (int i = 0; i < this.name.length(); i++) {
       this.charBuffer.put(this.name.charAt(i));
     }
-    this.charBuffer.flip();
+    // This (Buffer) is here to avoid NoSuchMethodError
+    ((Buffer)this.charBuffer).flip();
     try {
       Util.encode(ce, this.charBuffer, this.byteBuffer);
     } catch (CharacterCodingException e ) {
