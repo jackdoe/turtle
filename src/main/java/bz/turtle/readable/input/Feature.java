@@ -167,13 +167,13 @@ public class Feature implements FeatureInterface {
   /**
    * @return the string name, recomputed from nameInt if needed @see getIntegerName
    */
-  public StringBuilder getStringName() {
+  public String getStringName() {
     if (!isStringNameComputed) {
       this.name.setLength(0);
       this.name.append(this.nameInt);
       this.isStringNameComputed = true;
     }
-    return name;
+    return name.toString();
   }
 
   public ByteBuffer getBytes() {

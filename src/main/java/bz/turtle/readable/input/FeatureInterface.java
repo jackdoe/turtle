@@ -7,7 +7,7 @@ public interface FeatureInterface {
 
   int getIntegerName();
 
-  StringBuilder getStringName();
+  String getStringName();
 
   ByteBuffer getBytes();
 
