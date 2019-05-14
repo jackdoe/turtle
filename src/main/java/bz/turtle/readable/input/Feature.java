@@ -1,6 +1,6 @@
 package bz.turtle.readable.input;
 
-import sun.nio.cs.ThreadLocalCoders;
+import bz.turtle.readable.input.ThreadLocalCoders;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
