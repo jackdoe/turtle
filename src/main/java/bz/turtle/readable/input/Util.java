@@ -1,6 +1,5 @@
 package bz.turtle.readable.input;
 
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -82,14 +81,18 @@ class Util {
             if (cr.isOverflow()) {
                 n = 2 * n + 1;    // Ensure progress; n might be 0!
                 ByteBuffer o = ByteBuffer.allocate(n);
-                ((Buffer)out).flip();
+                // Not using .flip() because java hates it
+                out.limit(out.position());
+                out.position(0);
                 o.put(out);
                 out = o;
                 continue;
             }
             cr.throwException();
         }
-        ((Buffer)out).flip();
+        // Not using .flip() because java hates it
+        out.limit(out.position());
+        out.position(0);
         return out;
     }
 }
