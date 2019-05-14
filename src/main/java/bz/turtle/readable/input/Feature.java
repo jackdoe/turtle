@@ -243,7 +243,6 @@ public class Feature implements FeatureInterface {
         .onUnmappableCharacter(CodingErrorAction.REPLACE)
         .reset();
 
-    this.charBuffer.limit(this.name.length());
     for (int i = 0; i < this.name.length(); i++) {
       this.charBuffer.put(this.name.charAt(i));
     }
