@@ -3,7 +3,6 @@ package bz.turtle.readable.input;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
-import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
@@ -13,11 +12,7 @@ import java.nio.charset.StandardCharsets;
  * on the namespace hash
  */
 public class Feature implements FeatureInterface {
-  /**
-   * used so we dont recompute the hash value of the feature
-   */
-  private static final Charset charset = StandardCharsets.UTF_8;
-  /**
+   /**
    * used so we dont recompute the hash value of the feature
    */
   public transient int computedHashValue;
@@ -238,10 +233,7 @@ public class Feature implements FeatureInterface {
     this.byteBuffer.position(0);
     this.byteBuffer.limit(this.byteBuffer.capacity());
 
-    CharsetEncoder ce = ThreadLocalCoders.encoderFor(charset)
-        .onMalformedInput(CodingErrorAction.REPLACE)
-        .onUnmappableCharacter(CodingErrorAction.REPLACE)
-        .reset();
+    CharsetEncoder ce = LocalCharsetEncoder.get();
 
     for (int i = 0; i < this.name.length(); i++) {
       this.charBuffer.put(this.name.charAt(i));
@@ -271,5 +263,16 @@ public class Feature implements FeatureInterface {
 
   public void resetIsHashComputed() {
     hashIsComputed = false;
+  }
+
+  private static final class LocalCharsetEncoder {
+    private static final ThreadLocal<CharsetEncoder> localEncoder = ThreadLocal.withInitial(
+            () -> StandardCharsets.UTF_8.newEncoder()
+                    .onMalformedInput(CodingErrorAction.REPLACE)
+                    .onUnmappableCharacter(CodingErrorAction.REPLACE));
+
+    static CharsetEncoder get() {
+      return localEncoder.get().reset();
+    }
   }
 }
